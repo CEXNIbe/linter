@@ -1,0 +1,98 @@
+[
+	{
+		"name": "case"
+	},
+	{
+		"name": "checkbox"
+	},
+	{
+		"name": "code"
+	},
+	{
+		"name": "code[]"
+	},
+	{
+		"name": "date"
+	},
+	{
+		"name": "datetime"
+	},
+	{
+		"name": "decimal"
+	},
+	{
+		"name": "delay"
+	},
+	{
+		"name": "email"
+	},
+	{
+		"name": "email[]"
+	},
+	{
+		"name": "field-picklist"
+	},
+	{
+		"name": "field-picklist[]"
+	},
+	{
+		"name": "file[]"
+	},
+	{
+		"name": "id"
+	},
+	{
+		"name": "json"
+	},
+	{
+		"name": "json[]"
+	},
+	{
+		"name": "money"
+	},
+	{
+		"name": "number"
+	},
+	{
+		"name": "picklist"
+	},
+	{
+		"name": "picklist-api"
+	},
+	{
+		"name": "picklist[]"
+	},
+	{
+		"name": "primary"
+	},
+	{
+		"name": "radio"
+	},
+	{
+		"name": "textarea"
+	},
+	{
+		"name": "textbox"
+	},
+	{
+		"name": "texteditor"
+	},
+	{
+		"name": "time"
+	},
+	{
+		"name": "url"
+	},
+	{
+		"name": "user"
+	},
+	{
+		"name": "user[]"
+	},
+	{
+		"name": "yesno"
+	},
+	{
+		"name": "custom"
+	}
+]
