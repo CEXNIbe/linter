@@ -138,7 +138,11 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 }
 
 function picklistInEn(index, fileName) {
-	var enusKeys = Object.keys(enus.groups[0].subgroups[0].translations);
+	var enUsGroup = enus.groups.filter(function (group) {
+		return group.groupName === null;
+	});
+
+	var enusKeys = Object.keys(enUsGroup[0].subgroups[0].translations);
 	var notInEnus = index.filter(function(fieldDef) {
 		return !_.includes(enusKeys, fieldDef.typeOptions.picklistName);
 	});
