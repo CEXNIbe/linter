@@ -146,6 +146,9 @@ function picklistInEn(index, fileName) {
 	var notInEnus = index.filter(function(fieldDef) {
 		return !_.includes(enusKeys, fieldDef.typeOptions.picklistName);
 	});
+	_.remove(notInEnus, function (item) {
+		return item.typeOptions.picklistName === 'case_sources';
+	})
 	printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
 }
 
