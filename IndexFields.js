@@ -2,15 +2,15 @@ var _ = require('lodash');
 var fs = require('fs');
 var caseIndex = require(process.argv[2] + '/entities/case/index.js');
 var caseIndexFieldNames = getIndexFields(caseIndex.fields);
-var caseCaptureForm = require(process.argv[2] + '/config/form-layouts/case-capture-form.js');
-var caseOverviewForm = require(process.argv[2] + '/config/form-layouts/case-overview-form.js');
-var caseResolutionForm = require(process.argv[2] + '/config/form-layouts/case-resolution-form.js');
+var caseCaptureForm = parseForm(process.argv[2] + '/config/form-layouts/case-capture-form.js', 'caseCaptureForm.js');
+var caseOverviewForm = parseForm(process.argv[2] + '/config/form-layouts/case-overview-form.js', 'caseOverviewForm.js');
+var caseResolutionForm = parseForm(process.argv[2] + '/config/form-layouts/case-resolution-form.js', 'caseResolutionForm.js');
 var caseRules = require(process.argv[2] + '/entities/case/rules.js');
 var colors = require('colors');
 
 var partyIndex = require(process.argv[2] + '/entities/party/index.js');
 var partyIndexFieldNames = getIndexFields(partyIndex.fields);
-var partyDetailsForm = require(process.argv[2] + '/config/form-layouts/party-details-form.js');
+var partyDetailsForm = parseForm(process.argv[2] + '/config/form-layouts/party-details-form.js', 'partyDetailsForm.js');
 var partyRules = require(process.argv[2] + '/entities/party/rules.js');
 
 var optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
@@ -60,13 +60,14 @@ function checkFieldsInIndex(indexFieldNames, form, fileName) {
 			return acc;
 		}, []);
 
+	missingFields = removeRawTemplates(missingFields);
 	printFields(fileName, missingFields, 'Missing from Index file', null);
 	return missingFields;
 }
 
 
 function checkFieldTypes(index, indexName) {
-	var fieldTypes = require(process.argv[3]);
+	var fieldTypes = require(process.argv[3] + '/standard/field_types.json');
 	var shadyFieldTypes = index.filter(function(fieldDef) {
 		return !_.find(fieldTypes, ['name', fieldDef.type]);
 	});
@@ -182,4 +183,34 @@ function getIndexFields(index) {
 
 function getJSONFiles() {
 	return fs.readdirSync(process.argv[2] + '/data/lists');
+}
+
+function removeRawTemplates (data) {
+	_.remove(data, function(fieldDef) {
+		return fieldDef.type === 'raw';
+	});
+	return data;
+}
+
+function parseForm(path, filename) {
+	var form = null;
+	try {
+		form = require(path);
+	} catch (error) {
+		var tempForm = fs.readFileSync(path, 'utf-8');
+		tempForm = tempForm.split('\n');
+
+		tempForm = tempForm.map(function (line, index, arr) {
+			if (_.startsWith(_.trim(line), 'template:')) {
+				line = _.replace(line, 'require(', '');
+				line = _.replace(line, ')', '');
+			}
+			return line;
+		});
+
+		tempForm = _.join(tempForm, '\n');
+		fs.writeFileSync(process.argv[3] + `/temp_files/${filename}`, tempForm);
+		form = require(process.argv[3] + `/temp_files/${filename}`);
+	}
+	return form;
 }
