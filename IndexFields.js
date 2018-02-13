@@ -100,6 +100,7 @@ function getUnusedDisplayRules(formDef, rules) {
 			var displayRules = field.displayRule.split(splitRegex);
 			displayRules.forEach(function(displayRule) {
 				displayRule = _.trim(displayRule);
+				displayRule = displayRule.replace(/[^\w+]/g, '');
 				if (!_.includes(rules, displayRule)) {
 					acc.push(displayRule);
 				}
