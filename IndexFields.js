@@ -42,6 +42,7 @@ picklistsInOptions(partyPicklistDefs, 'party/index.js');
 picklistInEn(partyPicklistDefs, 'party/index.js');
 picklistJSONFileExists(partyPicklistDefs, 'party/index.js');
 
+cleanUp();
 // Functions
 
 function checkFieldsInIndex(indexFieldNames, form, fileName) {
@@ -91,7 +92,7 @@ function checkDisplayRulesExist(formDef, rules, fileName) {
 function getUnusedDisplayRules(formDef, rules) {
 	return formDef.reduce(function(acc, field) {
 		if (field.elements) {
-			var nested = getUnusedDisplayRules(field.elements);
+			var nested = getUnusedDisplayRules(field.elements, rules);
 			acc.push.apply(acc, nested);
 		}
 
@@ -198,6 +199,7 @@ function parseForm(path, filename) {
 	try {
 		form = require(path);
 	} catch (error) {
+		console.log('In here');
 		var tempForm = fs.readFileSync(path, 'utf-8');
 		tempForm = tempForm.split('\n');
 
@@ -214,4 +216,15 @@ function parseForm(path, filename) {
 		form = require(process.argv[3] + `/temp_files/${filename}`);
 	}
 	return form;
+}
+
+function cleanUp() {
+	var tempDir = process.argv[3] + '/temp_files/'
+	fs.readdir(tempDir, function (err, files) {
+		files.forEach(function (file) {
+			fs.unlink(tempDir + file), function (err) {
+				if (err) console.error(err);
+			}
+		});
+	});
 }
