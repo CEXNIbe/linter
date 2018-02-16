@@ -199,7 +199,6 @@ function parseForm(path, filename) {
 	try {
 		form = require(path);
 	} catch (error) {
-		console.log('In here');
 		var tempForm = fs.readFileSync(path, 'utf-8');
 		tempForm = tempForm.split('\n');
 
