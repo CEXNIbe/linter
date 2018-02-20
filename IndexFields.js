@@ -42,7 +42,6 @@ picklistsInOptions(partyPicklistDefs, 'party/index.js');
 picklistInEn(partyPicklistDefs, 'party/index.js');
 picklistJSONFileExists(partyPicklistDefs, 'party/index.js');
 
-cleanUp();
 // Functions
 
 function checkFieldsInIndex(indexFieldNames, form, fileName) {
@@ -215,15 +214,4 @@ function parseForm(path, filename) {
 		form = require(process.argv[3] + `/temp_files/${filename}`);
 	}
 	return form;
-}
-
-function cleanUp() {
-	var tempDir = process.argv[3] + '/temp_files/'
-	fs.readdir(tempDir, function (err, files) {
-		files.forEach(function (file) {
-			fs.unlink(tempDir + file), function (err) {
-				if (err) console.error(err);
-			}
-		});
-	});
 }
