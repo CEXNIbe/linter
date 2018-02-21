@@ -28,6 +28,7 @@ checkFieldTypes(partyIndex.fields, 'party/index.js');
 
 checkDisplayRulesExist(caseCaptureForm.elements, caseRules, 'case-capture-form.js');
 checkDisplayRulesExist(caseOverviewForm.elements, caseRules, 'case-overview-form.js');
+checkDisplayRulesExist(caseResolutionForm.elements, caseRules, 'case-resolution-form.js')
 checkDisplayRulesExist(partyDetailsForm.elements, partyRules, 'party-details-form.js');
 
 var casePicklistDefs =  getPicklistDefs(caseIndex.fields);
@@ -79,6 +80,10 @@ function checkFieldTypes(index, indexName) {
 function checkDisplayRulesExist(formDef, rules, fileName) {
 	rules = Object.keys(rules);
 	var undefinedDR = getUnusedDisplayRules(formDef, rules);
+
+	_.remove(undefinedDR, function (dr) {
+		return dr === 'isClosed';
+	});
 
 	if (_.size(undefinedDR) > 0) {
 		console.log('\nUndefined display rules in ' + colors.green(fileName))
