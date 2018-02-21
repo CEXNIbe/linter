@@ -41,6 +41,7 @@ picklistsDefined(partyPicklistDefs, 'party/index.js');
 picklistsInOptions(partyPicklistDefs, 'party/index.js');
 picklistInEn(partyPicklistDefs, 'party/index.js');
 picklistJSONFileExists(partyPicklistDefs, 'party/index.js');
+parsePicklists(process.argv[2]);
 
 // Functions
 
@@ -129,7 +130,7 @@ function picklistsInOptions(picklistIndex, fileName) {
 	var notInOptions = picklistIndex.filter(function (fieldDef) {
 		return !_.includes(optionsKeys, fieldDef.typeOptions.picklistName);
 	});
-	printFields(fileName, notInOptions, 'Picklist missing options.picklist', 'typeOptions', 'picklistName');
+	printFields(fileName, notInOptions, 'Picklist missing from options.picklist', 'typeOptions', 'picklistName');
 }
 
 function picklistJSONFileExists(picklistIndex, fileName) {
@@ -152,6 +153,35 @@ function picklistInEn(index, fileName) {
 		return item.typeOptions.picklistName === 'case_sources';
 	})
 	printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
+}
+
+function parsePicklists(path) {
+	path += '/data/lists/';
+	fs.readdir(path, function (err, files) {
+		if (err) { throw err }
+		files.forEach(function (file) {
+			var picklist = require(path + file);
+			picklistValuesUniq(picklist, file);
+		});
+	})
+}
+
+function picklistValuesUniq(picklist, fileName) {
+	var uniqValues = _.uniqWith(picklist, _.isEqual);
+
+	if (picklist.length !== uniqValues.length) {
+		console.log('Duplicate picklist values in ' + colors.green(fileName));
+		var result = picklist.filter(function (item, index, arr) {
+			var containsDup = _.some(arr.slice(index + 1), function (compItem) {
+				return _.isEqual(item, compItem);
+			});
+			return containsDup;
+		});
+
+		result.forEach(function (item) {
+			console.log(colors.red(item.value));
+		});
+	}
 }
 
 function printFields(file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) {
