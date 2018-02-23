@@ -15,7 +15,8 @@ var partyRules = require(process.argv[2] + '/entities/party/rules.js');
 
 var optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
 var enus = require(process.argv[2] + '/data/translations/en_US.js');
-var JSONfiles = getJSONFiles();
+var JSONfiles = getPicklistJSONFiles();
+var fieldTypes = getFieldTypes();
 
 
 checkFieldsInIndex(caseIndexFieldNames, caseCaptureForm, 'case-capture-form.js');
@@ -69,7 +70,6 @@ function checkFieldsInIndex(indexFieldNames, form, fileName) {
 
 
 function checkFieldTypes(index, indexName) {
-	var fieldTypes = require(process.argv[3] + '/standard/field_types.json');
 	var shadyFieldTypes = index.filter(function(fieldDef) {
 		return !_.find(fieldTypes, ['name', fieldDef.type]);
 	});
@@ -217,8 +217,28 @@ function getIndexFields(index) {
 	})
 }
 
-function getJSONFiles() {
+function getPicklistJSONFiles() {
 	return fs.readdirSync(process.argv[2] + '/data/lists');
+}
+
+function getFieldTypes(){
+	var fieldTypes = require(process.argv[3] + '/standard/field_types.json');
+
+	var fieldTypesPath = process.argv[2] + '/field-types';
+	if (fs.existsSync(fieldTypesPath)) {
+		var files = fs.readdirSync(fieldTypesPath);
+
+		files.forEach(function (file) {
+			if (fs.existsSync(fieldTypesPath + `/${file}/index.js`)) {
+				var fieldIndex = require(fieldTypesPath + `/${file}/index.js`);
+				fieldTypes.push({
+					name: fieldIndex.name
+				});
+			}
+		})
+	}
+
+	return fieldTypes
 }
 
 function removeRawTemplates (data) {
