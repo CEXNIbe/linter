@@ -71,7 +71,7 @@ function checkFieldsInIndex(indexFieldNames, form, fileName) {
 
 function checkFieldTypes(index, indexName) {
 	var shadyFieldTypes = index.filter(function(fieldDef) {
-		return !_.find(fieldTypes, ['name', fieldDef.type]);
+		return !_.includes(fieldTypes, fieldDef.type);
 	});
 
 	printFields(indexName, shadyFieldTypes, 'Shady field types', 'type');
@@ -222,7 +222,7 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	var fieldTypes = require(process.argv[3] + '/standard/field_types.json');
+	var fieldTypes = require(process.argv[3] + '/standard/field_types.js');
 
 	var fieldTypesPath = process.argv[2] + '/field-types';
 	if (fs.existsSync(fieldTypesPath)) {
@@ -231,9 +231,7 @@ function getFieldTypes(){
 		files.forEach(function (file) {
 			if (fs.existsSync(fieldTypesPath + `/${file}/index.js`)) {
 				var fieldIndex = require(fieldTypesPath + `/${file}/index.js`);
-				fieldTypes.push({
-					name: fieldIndex.name
-				});
+				fieldTypes.push(fieldIndex.name);
 			}
 		})
 	}
