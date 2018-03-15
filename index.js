@@ -1,10 +1,11 @@
 var _ = require('lodash');
 var fs = require('fs');
+var path = require('path');
+
 var caseIndex = require(process.argv[2] + '/entities/case/index.js');
 var caseIndexFieldNames = getIndexFields(caseIndex.fields);
 var caseCaptureForm = parseForm(process.argv[2] + '/config/form-layouts/case-capture-form.js', 'caseCaptureForm.js');
 var caseOverviewForm = parseForm(process.argv[2] + '/config/form-layouts/case-overview-form.js', 'caseOverviewForm.js');
-var caseResolutionForm = parseForm(process.argv[2] + '/config/form-layouts/case-resolution-form.js', 'caseResolutionForm.js');
 var caseRules = require(process.argv[2] + '/entities/case/rules.js');
 var colors = require('colors');
 
@@ -18,10 +19,8 @@ var enus = require(process.argv[2] + '/data/translations/en_US.js');
 var JSONfiles = getPicklistJSONFiles();
 var fieldTypes = getFieldTypes();
 
-
 checkFieldsInIndex(caseIndexFieldNames, caseCaptureForm, 'case-capture-form.js');
 checkFieldsInIndex(caseIndexFieldNames, caseOverviewForm, 'case-overview-form.js');
-checkFieldsInIndex(caseIndexFieldNames, caseResolutionForm, 'case-resolution-form.js');
 checkFieldsInIndex(partyIndexFieldNames, partyDetailsForm, 'party-details-form.js');
 
 checkFieldTypes(caseIndex.fields, 'case/index.js');
@@ -29,7 +28,6 @@ checkFieldTypes(partyIndex.fields, 'party/index.js');
 
 checkDisplayRulesExist(caseCaptureForm.elements, caseRules, 'case-capture-form.js');
 checkDisplayRulesExist(caseOverviewForm.elements, caseRules, 'case-overview-form.js');
-checkDisplayRulesExist(caseResolutionForm.elements, caseRules, 'case-resolution-form.js')
 checkDisplayRulesExist(partyDetailsForm.elements, partyRules, 'party-details-form.js');
 
 var casePicklistDefs =  getPicklistDefs(caseIndex.fields);
@@ -45,8 +43,22 @@ picklistInEn(partyPicklistDefs, 'party/index.js');
 picklistJSONFileExists(partyPicklistDefs, 'party/index.js');
 parsePicklists(process.argv[2]);
 
-// Functions
+// Search For tabs
+try {
+	var tabViewPaths = getTabViews(process.argv[2] + '/public/config/options.case-details-tabs-ex.js');
+	var tabFormNames = getTabFormNames(tabViewPaths);
+	var tabFormsObj = getForms(process.argv[2] + '/config/form-layouts/', tabFormNames);
 
+	tabFormsObj.forEach(function(formObj) {
+		var formFile = parseForm(formObj.path, path.basename(formObj.path));
+		checkFieldsInIndex(caseIndexFieldNames, formFile, path.basename(formObj.path));
+		checkDisplayRulesExist(formFile.elements, caseRules, path.basename(formObj.path));
+	});
+} catch (err) {
+	console.error(err);
+}
+
+// Functions
 function checkFieldsInIndex(indexFieldNames, form, fileName) {
 	var missingFields = form.elements
 		.reduce(function (acc, field) {
@@ -267,4 +279,61 @@ function parseForm(path, filename) {
 		form = require(process.argv[3] + `/temp_files/${filename}`);
 	}
 	return form;
+}
+
+function getTabViews(path) {
+	var tabViewPaths = fs.readFileSync(path, 'utf-8');
+	var startString = 'require(\'';
+	tabViewPaths = tabViewPaths.split('\n');
+
+	tabViewPaths = tabViewPaths.reduce(function (acc, line) {
+		if (_.includes(_.trim(line), '/views/case/') && _.endsWith(line, '.js\');')) {
+			line = line.substring(line.indexOf(startString) + startString.length, line.indexOf('\');'));
+			line = _.replace(line, '..', process.argv[2] + '/public')
+			acc.push(line);
+		}
+		return acc;
+	}, []);
+	return tabViewPaths;
+}
+
+function getTabFormNames(tabViewPaths) {
+	var startString = 'formConfigName: \'';
+
+	return tabViewPaths.map(function (tabPath) {
+		var tabViewFile = fs.readFileSync(tabPath, 'utf-8');
+		tabViewFile = tabViewFile.split('\n');
+
+		var formConfigNames = tabViewFile.reduce(function (acc, line) {
+			if (_.includes(_.trim(line), 'formConfigName:')) {
+				line = line.substring(line.indexOf(startString) + startString.length, line.indexOf('\','));
+				acc.push(line);
+			}
+			return acc;
+		}, []);
+		return formConfigNames[0];
+	});
+}
+
+function getForms(path, tabFormNames) {
+	var files = fs.readdirSync(path).filter(function (filename) {
+		return _.includes(filename, 'form');
+	});
+
+	var filesObj = files.map(function(filename) {
+		var form = parseForm(path + filename, filename);
+		return {
+			name: form.name,
+			path: path + filename
+		}
+	});
+
+	var tabForms = tabFormNames.reduce(function(acc, name) {
+		var obj = _.find(filesObj, {name: name});
+		if (obj) {
+			acc.push(obj);
+		}
+		return acc;
+	}, []);
+	return tabForms;
 }
