@@ -46,7 +46,7 @@ parsePicklists(process.argv[2]);
 // Search For tabs
 try {
 	var tabViewPaths = getTabViews(process.argv[2] + '/public/config/options.case-details-tabs-ex.js');
-	var tabFormNames = getTabFormNames(tabViewPaths);
+	var tabFormNames = getFormConfigName(tabViewPaths);
 	var tabFormsObj = getForms(process.argv[2] + '/config/form-layouts/', tabFormNames);
 
 	tabFormsObj.forEach(function(formObj) {
@@ -172,12 +172,12 @@ function picklistInEn(index, fileName) {
 	printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
 }
 
-function parsePicklists(path) {
-	path += '/data/lists/';
-	fs.readdir(path, function (err, files) {
+function parsePicklists(filePath) {
+	filePath += '/data/lists/';
+	fs.readdir(filePath, function (err, files) {
 		if (err) { throw err }
 		files.forEach(function (file) {
-			var picklist = require(path + file);
+			var picklist = require(filePath + file);
 			picklistValuesUniq(picklist, file);
 		});
 	})
@@ -258,12 +258,12 @@ function removeRawTemplates (data) {
 	return data;
 }
 
-function parseForm(path, filename) {
+function parseForm(filePath, filename) {
 	var form = null;
 	try {
-		form = require(path);
+		form = require(filePath);
 	} catch (error) {
-		var tempForm = fs.readFileSync(path, 'utf-8');
+		var tempForm = fs.readFileSync(filePath, 'utf-8');
 		tempForm = tempForm.split('\n');
 
 		tempForm = tempForm.map(function (line, index, arr) {
@@ -281,13 +281,13 @@ function parseForm(path, filename) {
 	return form;
 }
 
-function getTabViews(path) {
-	var tabViewPaths = fs.readFileSync(path, 'utf-8');
+function getTabViews(filepath) {
+	var tabViewPaths = fs.readFileSync(filepath, 'utf-8');
 	var startString = 'require(\'';
 	tabViewPaths = tabViewPaths.split('\n');
 
 	tabViewPaths = tabViewPaths.reduce(function (acc, line) {
-		if (_.includes(_.trim(line), '/views/case/') && _.endsWith(line, '.js\');')) {
+		if (_.includes(line, '/views/case/') && _.endsWith(line, '.js\');')) {
 			line = line.substring(line.indexOf(startString) + startString.length, line.indexOf('\');'));
 			line = _.replace(line, '..', process.argv[2] + '/public')
 			acc.push(line);
@@ -297,34 +297,33 @@ function getTabViews(path) {
 	return tabViewPaths;
 }
 
-function getTabFormNames(tabViewPaths) {
+function getFormConfigName(tabViewPaths) {
 	var startString = 'formConfigName: \'';
 
-	return tabViewPaths.map(function (tabPath) {
+	return tabViewPaths.reduce(function (acc, tabPath) {
 		var tabViewFile = fs.readFileSync(tabPath, 'utf-8');
 		tabViewFile = tabViewFile.split('\n');
 
-		var formConfigNames = tabViewFile.reduce(function (acc, line) {
-			if (_.includes(_.trim(line), 'formConfigName:')) {
+		var formConfigNames = tabViewFile.forEach(function (line) {
+			if (_.includes(line, 'formConfigName:')) {
 				line = line.substring(line.indexOf(startString) + startString.length, line.indexOf('\','));
 				acc.push(line);
 			}
-			return acc;
-		}, []);
-		return formConfigNames[0];
-	});
+		});
+		return acc;
+	}, []);
 }
 
-function getForms(path, tabFormNames) {
-	var files = fs.readdirSync(path).filter(function (filename) {
+function getForms(filePath, tabFormNames) {
+	var files = fs.readdirSync(filePath).filter(function (filename) {
 		return _.includes(filename, 'form');
 	});
 
 	var filesObj = files.map(function(filename) {
-		var form = parseForm(path + filename, filename);
+		var form = parseForm(filePath + filename, filename);
 		return {
 			name: form.name,
-			path: path + filename
+			path: filePath + filename
 		}
 	});
 
