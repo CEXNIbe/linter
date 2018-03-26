@@ -34,7 +34,7 @@ var casePicklistDefs =  getPicklistDefs(caseIndex.fields);
 picklistsDefined(casePicklistDefs, 'case/index.js');
 picklistsInOptions(casePicklistDefs, 'case/index.js');
 picklistInEn(casePicklistDefs, 'case/index.js');
-picklistJSONFileExists(casePicklistDefs, 'case/index.js')
+picklistJSONFileExists(casePicklistDefs, 'case/index.js');
 
 var partyPicklistDefs =  getPicklistDefs(partyIndex.fields);
 picklistsDefined(partyPicklistDefs, 'party/index.js');
@@ -54,6 +54,36 @@ try {
 		checkFieldsInIndex(caseIndexFieldNames, formFile, path.basename(formObj.path));
 		checkDisplayRulesExist(formFile.elements, caseRules, path.basename(formObj.path));
 	});
+} catch (err) {
+	console.error(err);
+}
+
+//Search Custom Entities
+try {
+	var entities = readEntities(process.argv[2] + '/entities/');
+	getCustomFormConfig(process.argv[2] + '/config/custom-forms/');
+	matchCustomEntitiesToView(process.argv[2] + '/public/views/custom-forms/');
+
+	var filteredList = _.filter(entities, function(entity) {
+		return _.has(entity, 'formConfigName');
+	});
+
+	filteredList.forEach(function(item) {
+		var customForm = require(process.argv[2] + '/config/form-layouts/' + item.formConfigName + '-form.js');
+		var customIndex = require(process.argv[2] + '/entities/' + item.name + '/index.js');
+		var customIndexFieldNames = getIndexFields(customIndex.fields);
+		var customRules = require(process.argv[2] + '/entities/' + item.name + '/rules.js');
+
+		checkFieldsInIndex(customIndexFieldNames, customForm, item.name + '-form.js');
+		checkFieldTypes(customIndex.fields, item.name + '/index.js');
+		checkDisplayRulesExist(customForm.elements, customRules, item.name + '-form.js');
+
+		var customPicklistDefs =  getPicklistDefs(customIndex.fields);
+		picklistsDefined(customPicklistDefs, item.name + '/index.js');
+		picklistsInOptions(customPicklistDefs, item.name + '/index.js');
+		picklistInEn(customPicklistDefs, item.name + '/index.js');
+		picklistJSONFileExists(customPicklistDefs, item.name + '/index.js');
+	})
 } catch (err) {
 	console.error(err);
 }
@@ -297,6 +327,7 @@ function getTabViews(filepath) {
 	return tabViewPaths;
 }
 
+
 function getFormConfigName(tabViewPaths) {
 	var startString = 'formConfigName: \'';
 
@@ -307,7 +338,10 @@ function getFormConfigName(tabViewPaths) {
 		var formConfigNames = tabViewFile.forEach(function (line) {
 			if (_.includes(line, 'formConfigName:')) {
 				line = line.substring(line.indexOf(startString) + startString.length, line.indexOf('\','));
-				acc.push(line);
+				acc.push({
+					view: path.basename(tabPath),
+					formConfigName: line
+				});
 			}
 		});
 		return acc;
@@ -328,11 +362,82 @@ function getForms(filePath, tabFormNames) {
 	});
 
 	var tabForms = tabFormNames.reduce(function(acc, name) {
-		var obj = _.find(filesObj, {name: name});
+		var obj = _.find(filesObj, {name: name.formConfigName});
 		if (obj) {
 			acc.push(obj);
 		}
 		return acc;
 	}, []);
 	return tabForms;
+}
+
+function readEntities(entityPath) {
+	var entityDir = fs.readdirSync(entityPath, 'utf8');
+	return entityDir.reduce(function(acc, entityName) {
+		var entityIndexPath = path.join(entityPath, entityName, 'index.js');
+		try {
+			fs.statSync(entityIndexPath);
+		} catch (err) {
+			return acc;
+		}
+		var entityIndexFile = require(entityIndexPath);
+		acc.push(entityIndexFile.entity);
+		return acc;
+	}, []);
+}
+
+function matchCustomEntitiesToView(customFormsViewsPath) {
+	try {
+		fs.statSync(customFormsViewsPath);
+	} catch (err) {
+		console.log(err)
+		return;
+	}
+
+	var customViewNames = fs.readdirSync(customFormsViewsPath, 'utf8');
+	customViewNames = customViewNames.filter(function(filename) {
+		return !_.startsWith(filename, '.')
+	}).map(function(filename) {
+		return path.join(customFormsViewsPath, filename);
+	});
+
+	var customFormNames = getFormConfigName(customViewNames);
+	customFormNames.forEach(function(customFormConfigName) {
+		_.forEach(entities, function(entity) {
+			if (entity.view === customFormConfigName.view) {
+				entity.formConfigName = customFormConfigName.formConfigName;
+			}
+		})
+	})
+}
+
+function matchCustomEntitiesToConfig(customFormConfigPaths) {
+	customFormConfigPaths.forEach(function(customFormConfigPath) {
+		customConfigFile = require(customFormConfigPath);
+		var customEntityIndex = _.findIndex(entities, customConfigFile.entity);
+		if (customEntityIndex >= 0) {
+			entities[customEntityIndex].view = customConfigFile.view;
+		}
+	});
+}
+
+function getCustomFormConfig(customFormsConfigPath) {
+	var result = [];
+	try {
+		fs.statSync(customFormsConfigPath);
+	} catch (err) {
+		return result;
+	}
+
+	var customConfig = fs.readdirSync(customFormsConfigPath);
+	var customFormConfigPaths = customConfig.reduce(function(acc, filename) {
+		if (!_.includes(filename, '.js')) {
+			return acc;
+		}
+		var configPath = path.join(customFormsConfigPath, filename);
+		acc.push(configPath);
+		return acc;
+	}, []);
+
+	matchCustomEntitiesToConfig(customFormConfigPaths);
 }
