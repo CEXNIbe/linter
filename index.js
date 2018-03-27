@@ -209,6 +209,7 @@ function parsePicklists(filePath) {
 		files.forEach(function (file) {
 			var picklist = require(filePath + file);
 			picklistValuesUniq(picklist, file);
+			picklistHasWhiteSpace(picklist, file);
 		});
 	})
 }
@@ -229,6 +230,88 @@ function picklistValuesUniq(picklist, fileName) {
 			console.log(colors.red(item.value));
 		});
 	}
+}
+
+function picklistHasWhiteSpace(picklist, fileName) {
+	var whiteSpaceValues = picklist.reduce(function (acc, item) {
+		var itemKeys = _.keys(item);
+		var result = {
+			offending: []
+		}
+		itemKeys.forEach(function(itemKey) {
+			var offending = {
+				key: itemKey,
+				keyOffending: false,
+				valueOffending: false
+			};
+
+			if (itemKey !== _.trim(itemKey) && (typeof itemKey === 'string')) {
+				offending.keyOffending = true;
+			}
+
+			if (typeof item[itemKey] === 'string') {
+				var trimmedValue = _.trim(item[itemKey]);
+				if (trimmedValue !== item[itemKey]) {
+					offending.valueOffending = true;
+				}
+			} else if (typeof item[itemKey] === 'object') {
+				item[itemKey].forEach(function(parentValue) {
+					if (_.trim(parentValue) !== parentValue) {
+						offending.valueOffending = true;
+					}
+				})
+			}
+
+			if (offending.keyOffending || offending.valueOffending) {
+				result.offending = offending;
+				result.value = item;
+				acc.push(result);
+			}
+		});
+		return acc;
+	}, []);
+
+	if (_.size(whiteSpaceValues) > 0) {
+		console.log('Picklist has white space in ' + colors.green(fileName));
+		whiteSpaceValues.forEach(function (result) {
+			printPicklist(result)
+		});
+	}
+}
+
+function printPicklist(result) {
+	var item = result.value;
+	var keys = _.keys(item);
+	var output = `{\n`;
+	keys.forEach(function(key) {
+		var printKey = key;
+		var printValue = item[key];
+		if (key === result.offending.key && result.offending.keyOffending) {
+			printKey = colors.red(key);
+		}
+
+		if (key === result.offending.key && result.offending.valueOffending) {
+			printValue = colors.red(item[key]);
+		}
+
+		if (typeof item[key] === 'string') {
+			output += `\t${printKey}: '${printValue}'\n`;
+		} else if (typeof item[key] === 'object') {
+			output += `\t${printKey}: [\n`;
+			item[key].forEach(function(parent) {
+				var printParent = parent;
+				if (_.trim(parent) !== parent) {
+					printParent = colors.red(parent);
+				}
+				output += `\t\t'${printParent}'\n`;
+			})
+			output +=  `\t]\n`
+		} else {
+			output += `\t${printKey}: ${item[key]}\n`;
+		}
+	})
+	output += `}`;
+	console.log(output);
 }
 
 function printFields(file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) {
