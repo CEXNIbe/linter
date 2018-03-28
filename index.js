@@ -68,8 +68,8 @@ try {
 		return _.has(entity, 'formConfigName');
 	});
 
-	filteredList.forEach(function(item) {
-		var customForm = require(process.argv[2] + '/config/form-layouts/' + item.formConfigName + '-form.js');
+	filteredList.forEach(function(item, index) {
+		var customForm = parseForm(process.argv[2] + '/config/form-layouts/' + item.formConfigName + '-form.js', `customform-${index}.js`);
 		var customIndex = require(process.argv[2] + '/entities/' + item.name + '/index.js');
 		var customIndexFieldNames = getIndexFields(customIndex.fields);
 		var customRules = require(process.argv[2] + '/entities/' + item.name + '/rules.js');
