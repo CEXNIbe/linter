@@ -382,7 +382,16 @@ function parseForm(filePath, filename) {
 		tempForm = tempForm.map(function (line, index, arr) {
 			if (_.startsWith(_.trim(line), 'template:')) {
 				line = _.replace(line, 'require(', '');
-				line = _.replace(line, ')', '');
+
+				if (line.match(/(\)|\),)$/)) {
+					line = _.replace(line, ')', '');
+				} else {
+					var nextLine = arr[index+1];
+					if (nextLine.match(/(\)|\),)$/)) {
+						arr[index+1] = _.replace(nextLine, ')', '');
+					}
+				}
+
 			}
 			return line;
 		});
