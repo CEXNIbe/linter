@@ -1,13 +1,13 @@
 var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
+var PrintModule = require(process.argv[3] + '/printModule.js');
 
 var caseIndex = require(process.argv[2] + '/entities/case/index.js');
 var caseIndexFieldNames = getIndexFields(caseIndex.fields);
 var caseCaptureForm = parseForm(process.argv[2] + '/config/form-layouts/case-capture-form.js', 'caseCaptureForm.js');
 var caseOverviewForm = parseForm(process.argv[2] + '/config/form-layouts/case-overview-form.js', 'caseOverviewForm.js');
 var caseRules = require(process.argv[2] + '/entities/case/rules.js');
-var colors = require('colors');
 
 var partyIndex = require(process.argv[2] + '/entities/party/index.js');
 var partyIndexFieldNames = getIndexFields(partyIndex.fields);
@@ -30,13 +30,13 @@ checkDisplayRulesExist(caseCaptureForm.elements, caseRules, 'case-capture-form.j
 checkDisplayRulesExist(caseOverviewForm.elements, caseRules, 'case-overview-form.js');
 checkDisplayRulesExist(partyDetailsForm.elements, partyRules, 'party-details-form.js');
 
-var casePicklistDefs =  getPicklistDefs(caseIndex.fields);
+var casePicklistDefs =  getPicklistDefs(caseIndex.fields, 'case/index.js');
 picklistsDefined(casePicklistDefs, 'case/index.js');
 picklistsInOptions(casePicklistDefs, 'case/index.js');
 picklistInEn(casePicklistDefs, 'case/index.js');
 picklistJSONFileExists(casePicklistDefs, 'case/index.js');
 
-var partyPicklistDefs =  getPicklistDefs(partyIndex.fields);
+var partyPicklistDefs =  getPicklistDefs(partyIndex.fields, 'party/index.js');
 picklistsDefined(partyPicklistDefs, 'party/index.js');
 picklistsInOptions(partyPicklistDefs, 'party/index.js');
 picklistInEn(partyPicklistDefs, 'party/index.js');
@@ -78,7 +78,7 @@ try {
 		checkFieldTypes(customIndex.fields, item.name + '/index.js');
 		checkDisplayRulesExist(customForm.elements, customRules, item.name + '-form.js');
 
-		var customPicklistDefs =  getPicklistDefs(customIndex.fields);
+		var customPicklistDefs =  getPicklistDefs(customIndex.fields, item.name + '-form.js');
 		picklistsDefined(customPicklistDefs, item.name + '/index.js');
 		picklistsInOptions(customPicklistDefs, item.name + '/index.js');
 		picklistInEn(customPicklistDefs, item.name + '/index.js');
@@ -106,7 +106,7 @@ function checkFieldsInIndex(indexFieldNames, form, fileName) {
 		}, []);
 
 	missingFields = removeRawTemplates(missingFields);
-	printFields(fileName, missingFields, 'Missing from Index file', null);
+	PrintModule.printFields(fileName, missingFields, 'Missing from Index file', null);
 	return missingFields;
 }
 
@@ -116,7 +116,7 @@ function checkFieldTypes(index, indexName) {
 		return !_.includes(fieldTypes, fieldDef.type);
 	});
 
-	printFields(indexName, shadyFieldTypes, 'Shady field types', 'type');
+	PrintModule.printFields(indexName, shadyFieldTypes, 'Shady field types', 'type');
 }
 
 function checkDisplayRulesExist(formDef, rules, fileName) {
@@ -127,13 +127,8 @@ function checkDisplayRulesExist(formDef, rules, fileName) {
 		return dr === 'isClosed';
 	});
 
-	if (_.size(undefinedDR) > 0) {
-		console.log('\nUndefined display rules in ' + colors.green(fileName))
-		undefinedDR = _.uniq(undefinedDR);
-		undefinedDR.forEach(function(dr) {
-			console.log(colors.red(dr));
-		})
-	}
+	undefinedDR = _.uniq(undefinedDR);
+	PrintModule.printArrayList(fileName, undefinedDR, 'Undefined display rules')
 }
 
 function getUnusedDisplayRules(formDef, rules) {
@@ -159,17 +154,32 @@ function getUnusedDisplayRules(formDef, rules) {
 	}, []);
 }
 
-function getPicklistDefs(index) {
-	return index.filter(function (fieldDef) {
+function getPicklistDefs(index, fileName) {
+	var picklistFields = index.filter(function (fieldDef) {
 		return fieldDef.type === 'picklist' || fieldDef.type === 'picklist[]';
-	})
+	});
+	checkPicklistTypeOptions(picklistFields, fileName);
+	return picklistFields;
+}
+
+function checkPicklistTypeOptions(picklistFields, fileName) {
+	var result = _.reduce(picklistFields, function(acc, field) {
+		if (_.has(field.typeOptions, 'picklistDependencies')) {
+			if(typeof field.typeOptions.picklistDependencies !== 'object') {
+				acc.push(field);
+			}
+		}
+		return acc;
+	}, []);
+
+	PrintModule.printFields(fileName, result, 'picklistDependencies should be an array', 'typeOptions', 'picklistDependencies');
 }
 
 function picklistsDefined(picklistIndex, fileName) {
 	var missingPicklistName = picklistIndex.filter(function(fieldDef) {
 		return !_.has(fieldDef, 'typeOptions.picklistName')
 	})
-	printFields(fileName, missingPicklistName, 'Picklist missing picklistName', 'typeOptions', 'picklistName');
+	PrintModule.printFields(fileName, missingPicklistName, 'Picklist missing picklistName', 'typeOptions', 'picklistName');
 }
 
 function picklistsInOptions(picklistIndex, fileName) {
@@ -177,14 +187,14 @@ function picklistsInOptions(picklistIndex, fileName) {
 	var notInOptions = picklistIndex.filter(function (fieldDef) {
 		return !_.includes(optionsKeys, fieldDef.typeOptions.picklistName);
 	});
-	printFields(fileName, notInOptions, 'Picklist missing from options.picklist', 'typeOptions', 'picklistName');
+	PrintModule.printFields(fileName, notInOptions, 'Picklist missing from options.picklist', 'typeOptions', 'picklistName');
 }
 
 function picklistJSONFileExists(picklistIndex, fileName) {
 	var notInFiles = picklistIndex.filter(function (fieldDef) {
 		return !_.includes(JSONfiles, fieldDef.typeOptions.picklistName + ".json");
 	});
-	printFields(fileName, notInFiles, 'Picklist .json file missing from data/lists', 'typeOptions', 'picklistName');
+	PrintModule.printFields(fileName, notInFiles, 'Picklist .json file missing from data/lists', 'typeOptions', 'picklistName');
 }
 
 function picklistInEn(index, fileName) {
@@ -199,7 +209,7 @@ function picklistInEn(index, fileName) {
 	_.remove(notInEnus, function (item) {
 		return item.typeOptions.picklistName === 'case_sources';
 	})
-	printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
+	PrintModule.printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
 }
 
 function parsePicklists(filePath) {
@@ -218,17 +228,18 @@ function picklistValuesUniq(picklist, fileName) {
 	var uniqValues = _.uniqWith(picklist, _.isEqual);
 
 	if (picklist.length !== uniqValues.length) {
-		console.log('Duplicate picklist values in ' + colors.green(fileName));
-		var result = picklist.filter(function (item, index, arr) {
+		var result = _.reduce(picklist, function (acc, item, index, arr) {
 			var containsDup = _.some(arr.slice(index + 1), function (compItem) {
 				return _.isEqual(item, compItem);
 			});
-			return containsDup;
-		});
 
-		result.forEach(function (item) {
-			console.log(colors.red(item.value));
-		});
+			if (containsDup) {
+				acc.push(item.value);
+			}
+			return acc;
+		}, []);
+
+		PrintModule.printArrayList(fileName, result, 'Duplicate picklist values');
 	}
 }
 
@@ -237,7 +248,7 @@ function picklistHasWhiteSpace(picklist, fileName) {
 		var itemKeys = _.keys(item);
 		var result = {
 			offending: []
-		}
+		};
 		itemKeys.forEach(function(itemKey) {
 			var offending = {
 				key: itemKey,
@@ -271,69 +282,7 @@ function picklistHasWhiteSpace(picklist, fileName) {
 		return acc;
 	}, []);
 
-	if (_.size(whiteSpaceValues) > 0) {
-		console.log('Picklist has white space in ' + colors.green(fileName));
-		whiteSpaceValues.forEach(function (result) {
-			printPicklist(result)
-		});
-	}
-}
-
-function printPicklist(result) {
-	var item = result.value;
-	var keys = _.keys(item);
-	var output = `{\n`;
-	keys.forEach(function(key) {
-		var printKey = key;
-		var printValue = item[key];
-		if (key === result.offending.key && result.offending.keyOffending) {
-			printKey = colors.red(key);
-		}
-
-		if (key === result.offending.key && result.offending.valueOffending) {
-			printValue = colors.red(item[key]);
-		}
-
-		if (typeof item[key] === 'string') {
-			output += `\t${printKey}: '${printValue}'\n`;
-		} else if (typeof item[key] === 'object') {
-			output += `\t${printKey}: [\n`;
-			item[key].forEach(function(parent) {
-				var printParent = parent;
-				if (_.trim(parent) !== parent) {
-					printParent = colors.red(parent);
-				}
-				output += `\t\t'${printParent}'\n`;
-			})
-			output +=  `\t]\n`
-		} else {
-			output += `\t${printKey}: ${item[key]}\n`;
-		}
-	})
-	output += `}`;
-	console.log(output);
-}
-
-function printFields(file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) {
-	if (_.size(fieldDefs) <= 0) {
-		return;
-	}
-
-	console.log('\n' + message + ' in ' + colors.green(file));
-	fieldDefs.forEach((fieldDef) => {
-		console.log('{');
-		if (fieldInQuestion) {
-			console.log('\tfield: ' + fieldDef.field);
-			if (fieldSecondLevel) {
-				console.log('\t' + fieldSecondLevel + ': ' + colors.red(fieldDef[fieldInQuestion][fieldSecondLevel]));
-			} else {
-				console.log('\t' + fieldInQuestion + ': ' + colors.red(fieldDef[fieldInQuestion]));
-			}
-		} else {
-			console.log('\tfield: ' + colors.red(fieldDef.field));
-		}
-		console.log('}');
-	})
+	PrintModule.printPicklists(fileName, whiteSpaceValues, 'Picklist has white space');
 }
 
 function getIndexFields(index) {
@@ -482,7 +431,7 @@ function matchCustomEntitiesToView(customFormsViewsPath) {
 	try {
 		fs.statSync(customFormsViewsPath);
 	} catch (err) {
-		console.log(err)
+		console.error(err)
 		return;
 	}
 
