@@ -1,7 +1,7 @@
 var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
-var PrintModule = require(process.argv[3] + '/printModule.js');
+var PrintModule = require(__dirname + '/printModule.js');
 
 var caseIndex = require(process.argv[2] + '/entities/case/index.js');
 var caseIndexFieldNames = getIndexFields(caseIndex.fields);
@@ -296,7 +296,7 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	var fieldTypes = require(process.argv[3] + '/standard/field_types.js');
+	var fieldTypes = require(__dirname + '/standard/field_types.js');
 
 	var fieldTypesPath = process.argv[2] + '/field-types';
 	if (fs.existsSync(fieldTypesPath)) {
@@ -346,8 +346,8 @@ function parseForm(filePath, filename) {
 		});
 
 		tempForm = _.join(tempForm, '\n');
-		fs.writeFileSync(process.argv[3] + `/temp_files/${filename}`, tempForm);
-		form = require(process.argv[3] + `/temp_files/${filename}`);
+		fs.writeFileSync(__dirname + `/temp_files/${filename}`, tempForm);
+		form = require(__dirname + `/temp_files/${filename}`);
 	}
 	return form;
 }
