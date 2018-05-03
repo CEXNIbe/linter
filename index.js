@@ -43,6 +43,15 @@ picklistInEn(partyPicklistDefs, 'party/index.js');
 picklistJSONFileExists(partyPicklistDefs, 'party/index.js');
 parsePicklists(process.argv[2]);
 
+// Search for Case Tombstone
+try {
+	var optionsCaseTombstoneEx = require(process.argv[2] + '/public/config/options.case-tombstone-ex.js');
+	checkFormFieldsInIndex(caseIndexFieldNames, optionsCaseTombstoneEx, 'options.case-tombstone-ex.js');
+	checkDisplayRulesExist(optionsCaseTombstoneEx, caseRules, 'options.case-tombstone-ex.js');
+} catch (err) {
+	console.error(err);
+}
+
 // Search For tabs
 try {
 	var tabViewPaths = getTabViews(process.argv[2] + '/public/config/options.case-details-tabs-ex.js');
@@ -83,15 +92,18 @@ try {
 		picklistsInOptions(customPicklistDefs, item.name + '/index.js');
 		picklistInEn(customPicklistDefs, item.name + '/index.js');
 		picklistJSONFileExists(customPicklistDefs, item.name + '/index.js');
-	})
+	});
 } catch (err) {
 	console.error(err);
 }
 
 // Functions
 function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
-	var missingFields = form.elements
-		.reduce(function (acc, field) {
+	if (!_.isArray(form) && _.has(form, 'elements')) {
+		form = form.elements;
+	}
+
+	var missingFields = _.reduce(form, function (acc, field) {
 			if (field.type == 'section') {
 				var sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
 				if (sectionFields.length > 0) {
@@ -111,7 +123,6 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	}
 	return missingFields;
 }
-
 
 function checkFieldTypes(index, indexName) {
 	var shadyFieldTypes = index.filter(function(fieldDef) {
