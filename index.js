@@ -19,9 +19,9 @@ var enus = require(process.argv[2] + '/data/translations/en_US.js');
 var JSONfiles = getPicklistJSONFiles();
 var fieldTypes = getFieldTypes();
 
-checkFieldsInIndex(caseIndexFieldNames, caseCaptureForm, 'case-capture-form.js');
-checkFieldsInIndex(caseIndexFieldNames, caseOverviewForm, 'case-overview-form.js');
-checkFieldsInIndex(partyIndexFieldNames, partyDetailsForm, 'party-details-form.js');
+checkFormFieldsInIndex(caseIndexFieldNames, caseCaptureForm, 'case-capture-form.js');
+checkFormFieldsInIndex(caseIndexFieldNames, caseOverviewForm, 'case-overview-form.js');
+checkFormFieldsInIndex(partyIndexFieldNames, partyDetailsForm, 'party-details-form.js');
 
 checkFieldTypes(caseIndex.fields, 'case/index.js');
 checkFieldTypes(partyIndex.fields, 'party/index.js');
@@ -51,7 +51,7 @@ try {
 
 	tabFormsObj.forEach(function(formObj) {
 		var formFile = parseForm(formObj.path, path.basename(formObj.path));
-		checkFieldsInIndex(caseIndexFieldNames, formFile, path.basename(formObj.path));
+		checkFormFieldsInIndex(caseIndexFieldNames, formFile, path.basename(formObj.path));
 		checkDisplayRulesExist(formFile.elements, caseRules, path.basename(formObj.path));
 	});
 } catch (err) {
@@ -74,7 +74,7 @@ try {
 		var customIndexFieldNames = getIndexFields(customIndex.fields);
 		var customRules = require(process.argv[2] + '/entities/' + item.name + '/rules.js');
 
-		checkFieldsInIndex(customIndexFieldNames, customForm, item.name + '-form.js');
+		checkFormFieldsInIndex(customIndexFieldNames, customForm, item.name + '-form.js');
 		checkFieldTypes(customIndex.fields, item.name + '/index.js');
 		checkDisplayRulesExist(customForm.elements, customRules, item.name + '-form.js');
 
@@ -89,12 +89,12 @@ try {
 }
 
 // Functions
-function checkFieldsInIndex(indexFieldNames, form, fileName) {
+function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	var missingFields = form.elements
 		.reduce(function (acc, field) {
 			if (field.type == 'section') {
-				var sectionFields = checkFieldsInIndex(indexFieldNames, field);
-				if (sectionFields.lenght > 0) {
+				var sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
+				if (sectionFields.length > 0) {
 					sectionFields.forEach(function(sectionField) {
 						acc.push(sectionField);
 					});
@@ -105,8 +105,10 @@ function checkFieldsInIndex(indexFieldNames, form, fileName) {
 			return acc;
 		}, []);
 
-	missingFields = removeRawTemplates(missingFields);
-	PrintModule.printFields(fileName, missingFields, 'Missing from Index file', null);
+	if (fileName) {
+		missingFields = removeRawTemplates(missingFields);
+		PrintModule.printFields(fileName, missingFields, 'Missing from Index file', null);
+	}
 	return missingFields;
 }
 
