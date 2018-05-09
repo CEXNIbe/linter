@@ -97,6 +97,8 @@ try {
 	console.error(err);
 }
 
+PrintModule.printErrorsFound();
+
 // Functions
 function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	if (!_.isArray(form) && _.has(form, 'elements')) {

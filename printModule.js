@@ -1,5 +1,6 @@
 var _ = require('lodash');
 var colors = require('colors');
+var noErrorFound = true;
 
 module.exports = {
 	printFields: function (file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) {
@@ -7,6 +8,7 @@ module.exports = {
 			return;
 		}
 
+		noErrorFound = false;
 		console.log('\n' + message + ' in ' + colors.green(file));
 		fieldDefs.forEach((fieldDef) => {
 			console.log('{');
@@ -29,6 +31,7 @@ module.exports = {
 			return;
 		}
 
+		noErrorFound = false;
 		console.log('\n' + message + ' in ' + colors.green(fileName));
 		_.forEach(picklists, function (picklist){
 			printPicklistItem(picklist);
@@ -40,10 +43,17 @@ module.exports = {
 			return;
 		}
 
+		noErrorFound = false;
 		console.log('\n' + message + ' in ' + colors.green(fileName));
 		_.forEach(arrayList, function (item) {
 			console.log(colors.red(item));
 		});
+	},
+
+	printErrorsFound: function () {
+		if (noErrorFound) {
+			console.log(colors.green('No Error Found'));
+		}
 	}
 }
 
