@@ -52,7 +52,7 @@ module.exports = {
 
 	printErrorsFound: function () {
 		if (noErrorFound) {
-			console.log(colors.green('No Error Found'));
+			console.log(colors.green('No Errors Found'));
 		}
 	}
 }
