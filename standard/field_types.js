@@ -23,6 +23,7 @@ module.exports = [
 	'picklist[]',
 	'primary',
 	'radio',
+	'sequenceNumber',
 	'textarea',
 	'textbox',
 	'texteditor',
