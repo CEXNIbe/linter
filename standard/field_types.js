@@ -18,6 +18,7 @@ module.exports = [
 	'json[]',
 	'money',
 	'number',
+	'numberRangePicklist',
 	'picklist',
 	'picklist-api',
 	'picklist[]',
