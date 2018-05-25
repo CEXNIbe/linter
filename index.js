@@ -41,7 +41,12 @@ picklistsDefined(partyPicklistDefs, 'party/index.js');
 picklistsInOptions(partyPicklistDefs, 'party/index.js');
 picklistInEn(partyPicklistDefs, 'party/index.js');
 picklistJSONFileExists(partyPicklistDefs, 'party/index.js');
-parsePicklists(process.argv[2]);
+try {
+	parsePicklists(process.argv[2]);
+} catch (err) {
+	console.error(err);
+}
+
 
 // Search for Case Tombstone
 try {
@@ -227,11 +232,13 @@ function picklistInEn(index, fileName) {
 	PrintModule.printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
 }
 
-function parsePicklists(filePath) {
-	filePath += '/data/lists/';
+function parsePicklists(workspace) {
+	filePath = workspace + '/data/lists/';
 	fs.readdir(filePath, function (err, files) {
 		if (err) { throw err }
 		files.forEach(function (file) {
+			if (path.extname(file) != '.json') return;
+
 			var picklist = require(filePath + file);
 			picklistValuesUniq(picklist, file);
 			picklistHasWhiteSpace(picklist, file);
