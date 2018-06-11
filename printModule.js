@@ -3,14 +3,12 @@ var colors = require('colors');
 var noErrorFound = true;
 
 module.exports = {
-	printFields: function (file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) {
-		if (_.size(fieldDefs) <= 0) {
-			return;
-		}
+	printFields: (file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) => {
+		if (_.isEmpty(fieldDefs)) return;
 
-		noErrorFound = false;
+		errorFound();
 		console.log('\n' + message + ' in ' + colors.green(file));
-		fieldDefs.forEach((fieldDef) => {
+		_.forEach(fieldDefs, (fieldDef) => {
 			console.log('{');
 			if (fieldInQuestion) {
 				console.log('\tfield: ' + fieldDef.field);
@@ -26,31 +24,27 @@ module.exports = {
 		})
 	},
 
-	printPicklists: function (fileName, picklists, message) {
-		if (_.size(picklists) <= 0) {
-			return;
-		}
+	printPicklists: (fileName, picklists, message) => {
+		if (_.isEmpty(picklists)) return;
 
-		noErrorFound = false;
+		errorFound();
 		console.log('\n' + message + ' in ' + colors.green(fileName));
 		_.forEach(picklists, function (picklist){
 			printPicklistItem(picklist);
 		});
 	},
 
-	printArrayList: function (fileName, arrayList, message) {
-		if (_.size(arrayList) <= 0) {
-			return;
-		}
+	printArrayList: (fileName, arrayList, message) => {
+		if (_.isEmpty(arrayList)) return;
 
-		noErrorFound = false;
+		errorFound();
 		console.log('\n' + message + ' in ' + colors.green(fileName));
 		_.forEach(arrayList, function (item) {
 			console.log(colors.red(item));
 		});
 	},
 
-	printErrorsFound: function () {
+	printErrorsFound: () => {
 		if (noErrorFound) {
 			console.log(colors.green('No Errors Found'));
 		}
@@ -90,4 +84,8 @@ function printPicklistItem (result) {
 	});
 	output += `}`;
 	console.log(output);
+}
+
+function errorFound () {
+	noErrorFound = false;
 }
