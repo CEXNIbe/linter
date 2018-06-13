@@ -183,8 +183,11 @@ function checkFieldTypes(index, indexName) {
 function checkDisplayRulesExist(formDef, rules, fileName) {
 	rules = Object.keys(rules);
 	var undefinedDR = getUnusedDisplayRules(formDef, rules);
-
 	undefinedDR = _.uniq(undefinedDR);
+
+	var itemsToExclude = excludeModule.displayRulesToExclude(fileName);
+	_.remove(undefinedDR, (rule) => _.includes(itemsToExclude, rule));
+
 	PrintModule.printArrayList(fileName, undefinedDR, 'Undefined display rules')
 }
 

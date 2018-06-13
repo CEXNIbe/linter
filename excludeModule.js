@@ -5,6 +5,12 @@ module.exports = {
 		return exclude;
 	},
 
+	displayRulesToExclude: function (filename) {
+		var exclude = [];
+		if (filename === 'todo-details-form.js') exclude.push('isNotNew');
+		return exclude;
+	},
+
 	formsToExclude: [
 		'case-escalation-details-form.js',
 		'case-notification-details-form.js'
