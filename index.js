@@ -130,6 +130,9 @@ function testForm(formName, formPath) {
 		entityIndexNames = entity.indexFieldNames;
 
 		checkFormFieldsInIndex(entityIndexNames, form, formName);
+
+		if (!entity.indexFile.rules) return;
+
 		if (isPseudoForm) {
 			checkDisplayRulesExist(form, entity.indexFile.rules, formName);
 		} else {
