@@ -102,11 +102,15 @@ function testIndexFile(entity) {
 	checkFieldTypes(indexFile.fields, indexNameWithPath);
 
 	var picklists = getPicklistDefs(indexFile.fields, indexNameWithPath);
+	checkPicklistTypeOptions(picklists, indexNameWithPath);
 	picklistsDefined(picklists, indexNameWithPath);
 	picklistsInOptions(picklists, indexNameWithPath);
 	picklistInEn(picklists, indexNameWithPath);
 	picklistJSONFileExists(picklists, indexNameWithPath);
 	picklistDependenciesMatchUp(picklists, indexNameWithPath);
+
+	var radios = getRadioDefs(indexFile.fields, indexNameWithPath);
+	checkRadioTypeOptions(radios, indexNameWithPath);
 }
 
 
@@ -218,7 +222,6 @@ function getPicklistDefs(index, fileName) {
 	var picklistFields = _.filter(index, (fieldDef) => {
 		return fieldDef.type === 'picklist' || fieldDef.type === 'picklist[]';
 	});
-	checkPicklistTypeOptions(picklistFields, fileName);
 	return picklistFields;
 }
 
@@ -394,6 +397,21 @@ function picklistHasWhiteSpace(picklist, fileName) {
 	PrintModule.printPicklists(fileName, whiteSpaceValues, 'Picklist has white space');
 }
 
+function checkRadioTypeOptions(radios, fileName) {
+	var result = _.reduce(radios, (acc, field) => {
+		if (!_.has(field, 'typeOptions.radios')) {
+			acc.missingRadiosOption.push(field);
+		} else if (!_.isArray(field.typeOptions.radios)) {
+			acc.radiosOptionsNotArray.push(field);
+		}
+
+		return acc;
+	}, { missingRadiosOption: [], radiosOptionsNotArray: [] });
+
+	PrintModule.printRadios(fileName, 'Radios missing typeOptions.radios attribute', result.missingRadiosOption, ['field', 'typeOptions.radios']);
+	PrintModule.printRadios(fileName, 'typeOptions.radios is not an array', result.radiosOptionsNotArray, ['field', 'typeOptions.radios']);
+}
+
 function getFieldNames(index) {
 	return _.map(index, (f) => f.field );
 }
@@ -418,6 +436,13 @@ function getFieldTypes(){
 	}
 
 	return fieldTypes
+}
+
+function getRadioDefs(index, fileName) {
+	var picklistFields = _.filter(index, (fieldDef) => {
+		return fieldDef.type === 'radio';
+	});
+	return picklistFields;
 }
 
 function removeRawTemplates (data) {

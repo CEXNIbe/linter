@@ -29,7 +29,7 @@ module.exports = {
 
 		errorFound();
 		console.log('\n' + message + ' in ' + colors.green(fileName));
-		_.forEach(picklists, function (picklist){
+		_.forEach(picklists, (picklist) => {
 			printPicklistItem(picklist);
 		});
 	},
@@ -39,8 +39,18 @@ module.exports = {
 
 		errorFound();
 		console.log('\n' + message + ' in ' + colors.green(fileName));
-		_.forEach(arrayList, function (item) {
+		_.forEach(arrayList, (item) => {
 			console.log(colors.red(item));
+		});
+	},
+
+	printRadios: (fileName, message, radios, attributes) => {
+		if (_.isEmpty(radios)) return;
+
+		errorFound();
+		console.log(`\n${message} in ${colors.green(fileName)}`);
+		_.forEach(radios, (item) => {
+			printField(item, attributes);
 		});
 	},
 
@@ -84,6 +94,15 @@ function printPicklistItem (result) {
 	});
 	output += `}`;
 	console.log(output);
+}
+
+function printField(fieldDef, attributes) {
+	var result = '{\n';
+	_.forEach(attributes, (key) => {
+		result += `\t${key}: ${_.get(fieldDef, key)}\n`;
+	});
+	result += `}\n`;
+	console.log(result);
 }
 
 function errorFound () {
