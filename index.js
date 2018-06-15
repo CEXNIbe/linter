@@ -38,7 +38,7 @@ function getEntities() {
 	var entityDir = fs.readdirSync(entitiesPath, 'utf8');
 
 	return _.reduce(entityDir, (acc, entityName) => {
-		if (entityName === 'index-ui.js') return acc;
+		if (entityName === 'index-ui.js' || _.startsWith(entityName, '.')) return acc;
 
 		try {
 			var entityIndexPath = path.join(entitiesPath, entityName, 'index.js');
@@ -99,6 +99,7 @@ function testIndexFile(entity) {
 	var indexFile = entity.indexFile;
 	var indexFieldNames = entity.indexFieldNames;
 	checkFieldTypes(indexFile.fields, indexNameWithPath);
+	checkValidation(indexFile, indexFieldNames, path.join(entity.name, 'validation.js'));
 
 	var picklists = getPicklistDefs(indexFile.fields, indexNameWithPath);
 	picklists = checkPicklistHasTypeOptions(picklists, indexNameWithPath);
@@ -192,6 +193,41 @@ function checkFieldTypes(index, indexName) {
 	PrintModule.printFields(indexName, 'Shady field types', shadyFieldTypes);
 }
 
+function checkValidation(indexFile, indexFieldNames, fileName) {
+	var validation = indexFile.validation;
+	var fieldsToExclude = excludeModule.validationFieldsToExclude(fileName)
+	if (!validation) return;
+
+	if (_.has(validation, 'mandatory$')) {
+		var fieldNoExist = _.reduce(validation['mandatory$'], (acc, value) => {
+			if (!_.includes(indexFieldNames, value) && !_.includes(fieldsToExclude, value)) acc.push(value);
+			return acc;
+		}, []);
+
+		PrintModule.printArrayList(fileName, fieldNoExist, `mandatory$ fields don't exist`);
+	}
+
+	if (_.has(validation, 'dependentMandatory$')) {
+		var rules = Object.keys(indexFile.rules);
+		var missingRules = [];
+
+		fieldNoExist = _.reduce(validation['dependentMandatory$'], (acc, validationRule) => {
+			// Check conditions exist
+			// _.forEach(validationRule.condition, (condition) => {
+				missingRules = _.concat(missingRules, getMissingRules(rules, validationRule.condition));
+			// });
+
+			_.forEach(validationRule.fields, (field) => {
+				if (!_.includes(indexFieldNames, field) && !_.includes(fieldsToExclude, field)) acc.push(field);
+			});
+			return acc;
+		}, []);
+
+		PrintModule.printArrayList(fileName, fieldNoExist, `dependentMandatory$ fields don't exist`);
+		PrintModule.printArrayList(fileName, missingRules, `condition missing from rules`);
+	}
+}
+
 function checkDisplayRulesExist(formDef, rules, fileName) {
 	rules = Object.keys(rules);
 	var undefinedDR = getUnusedDisplayRules(formDef, rules);
@@ -211,16 +247,20 @@ function getUnusedDisplayRules(formDef, rules) {
 		}
 
 		if (field.displayRule) {
-			var splitRegex =  /\|\||&&/;
-			var displayRules = field.displayRule.split(splitRegex);
-			_.forEach(displayRules, (displayRule) => {
-				displayRule = _.trim(displayRule);
-				displayRule = displayRule.replace(/[^\w+]/g, '');
-				if (!_.includes(rules, displayRule)) {
-					acc.push(displayRule);
-				}
-			});
+			acc = _.concat(acc, getMissingRules(rules, field.displayRule));
 		}
+
+		return acc;
+	}, []);
+}
+
+function getMissingRules(ruleKeys, displayRule) {
+	var splitRegex =  /\|\||&&/;
+	var displayRules = displayRule.split(splitRegex);
+	return _.reduce(displayRules, (acc, rule) => {
+		rule = _.trim(rule);
+		rule = rule.replace(/[^\w+]/g, '');
+		if (!_.includes(ruleKeys, rule)) acc.push(rule);
 
 		return acc;
 	}, []);

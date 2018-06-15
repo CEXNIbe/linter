@@ -14,5 +14,11 @@ module.exports = {
 	formsToExclude: [
 		'case-escalation-details-form.js',
 		'case-notification-details-form.js'
-	]
+	],
+
+	validationFieldsToExclude: function (filename) {
+		var exclude = [];
+		if (filename === 'user/validation.js') exclude.push('oldPassword', 'confirmedPassword');
+		return exclude
+	}
 };
