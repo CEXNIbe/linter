@@ -3,25 +3,16 @@ var colors = require('colors');
 var noErrorFound = true;
 
 module.exports = {
-	printFields: (file, fieldDefs, message, fieldInQuestion, fieldSecondLevel) => {
-		if (_.isEmpty(fieldDefs)) return;
+	printFields: (fileName, message, options) => {
+		if (_.isEmpty(options)) return;
 
 		errorFound();
-		console.log('\n' + message + ' in ' + colors.green(file));
-		_.forEach(fieldDefs, (fieldDef) => {
-			console.log('{');
-			if (fieldInQuestion) {
-				console.log('\tfield: ' + fieldDef.field);
-				if (fieldSecondLevel) {
-					console.log('\t' + fieldSecondLevel + ': ' + colors.red(fieldDef[fieldInQuestion][fieldSecondLevel]));
-				} else {
-					console.log('\t' + fieldInQuestion + ': ' + colors.red(fieldDef[fieldInQuestion]));
-				}
-			} else {
-				console.log('\tfield: ' + colors.red(fieldDef.field));
-			}
-			console.log('}');
-		})
+		console.log(`\n${message} in ${colors.green(fileName)}`);
+		_.forEach(options, (option) => {
+			if (!option.color) option.color = 'red';
+
+			printField(option);
+		});
 	},
 
 	printPicklists: (fileName, picklists, message) => {
@@ -41,16 +32,6 @@ module.exports = {
 		console.log('\n' + message + ' in ' + colors.green(fileName));
 		_.forEach(arrayList, (item) => {
 			console.log(colors.red(item));
-		});
-	},
-
-	printRadios: (fileName, message, radios, attributes) => {
-		if (_.isEmpty(radios)) return;
-
-		errorFound();
-		console.log(`\n${message} in ${colors.green(fileName)}`);
-		_.forEach(radios, (item) => {
-			printField(item, attributes);
 		});
 	},
 
@@ -96,10 +77,10 @@ function printPicklistItem (result) {
 	console.log(output);
 }
 
-function printField(fieldDef, attributes) {
+function printField(option) {
 	var result = '{\n';
-	_.forEach(attributes, (key) => {
-		result += `\t${key}: ${_.get(fieldDef, key)}\n`;
+	_.forEach(option.attributes, (key) => {
+		result += `\t${key}: ${colors[option.color](_.get(option.fieldDef, key))}\n`;
 	});
 	result += `}\n`;
 	console.log(result);

@@ -7,8 +7,7 @@ var defaultsModule = require(__dirname + '/defaults/defaults.js');
 
 
 var optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
-var configEnUs = require(process.argv[2] + '/data/translations/en_US.js');
-var platformEnUs = require(process.argv[2] + '/node_modules/isight/script/data/translations/en_US.js')
+var translations = getMergedTranslations();
 var JSONfiles = getPicklistJSONFiles();
 var fieldTypes = getFieldTypes();
 
@@ -102,8 +101,9 @@ function testIndexFile(entity) {
 	checkFieldTypes(indexFile.fields, indexNameWithPath);
 
 	var picklists = getPicklistDefs(indexFile.fields, indexNameWithPath);
-	checkPicklistTypeOptions(picklists, indexNameWithPath);
-	picklistsDefined(picklists, indexNameWithPath);
+	picklists = checkPicklistHasTypeOptions(picklists, indexNameWithPath);
+	checkPicklistDependeciesIsArray(picklists, indexNameWithPath);
+	picklistsHasPicklistName(picklists, indexNameWithPath);
 	picklistsInOptions(picklists, indexNameWithPath);
 	picklistInEn(picklists, indexNameWithPath);
 	picklistJSONFileExists(picklists, indexNameWithPath);
@@ -111,6 +111,7 @@ function testIndexFile(entity) {
 
 	var radios = getRadioDefs(indexFile.fields, indexNameWithPath);
 	checkRadioTypeOptions(radios, indexNameWithPath);
+	checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
 }
 
 
@@ -154,34 +155,41 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	if (!_.isArray(form) && _.has(form, 'elements')) {
 		form = form.elements;
 	}
+	var attributes = ['field'];
 
 	var missingFields = _.reduce(form, function (acc, field) {
-			if (field.type == 'section') {
+			if (field.type === 'section') {
 				var sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
-				if (sectionFields.length > 0) {
+				if (!_.isEmpty(sectionFields)) {
 					sectionFields.forEach(function(sectionField) {
 						acc.push(sectionField);
 					});
 				}
 			} else if (!_.includes(indexFieldNames, field.field)) {
-				acc.push(field)
+				if (fileName === 'training-details-form.js') console.log(field);
+				acc.push({ fieldDef: field, attributes });
 			}
 			return acc;
 		}, []);
 
 	if (fileName) {
 		missingFields = removeRawTemplates(missingFields);
-		PrintModule.printFields(fileName, missingFields, 'Missing from Index file', null);
+		PrintModule.printFields(fileName, 'Missing from Index file', missingFields);
 	}
 	return missingFields;
 }
 
 function checkFieldTypes(index, indexName) {
-	var shadyFieldTypes = _.filter(index, (fieldDef) => {
-		return !_.includes(fieldTypes, fieldDef.type);
-	});
+	var attributes = ['field', 'type'];
 
-	PrintModule.printFields(indexName, shadyFieldTypes, 'Shady field types', 'type');
+	var shadyFieldTypes = _.reduce(index, (acc, fieldDef) => {
+		if (!_.includes(fieldTypes, fieldDef.type)) {
+			acc.push({ fieldDef, attributes })
+		}
+		return acc;
+	}, []);
+
+	PrintModule.printFields(indexName, 'Shady field types', shadyFieldTypes);
 }
 
 function checkDisplayRulesExist(formDef, rules, fileName) {
@@ -225,74 +233,98 @@ function getPicklistDefs(index, fileName) {
 	return picklistFields;
 }
 
-function checkPicklistTypeOptions(picklistFields, fileName) {
-	var result = _.reduce(picklistFields, (acc, field) => {
-		if (_.has(field.typeOptions, 'picklistDependencies')) {
-			if(typeof field.typeOptions.picklistDependencies !== 'object') {
-				acc.push(field);
+function checkPicklistHasTypeOptions(picklistFields, fileName) {
+	var attributes = ['field', 'typeOptions'];
+	var noTypeOption = [];
+
+	var result = _.reduce(picklistFields, (acc, fieldDef) => {
+		if (_.has(fieldDef, 'typeOptions')) {
+			acc.push(fieldDef);
+		} else {
+			noTypeOption.push({ fieldDef, attributes });
+		}
+
+		return acc;
+	}, []);
+
+	PrintModule.printFields(fileName, 'picklist missing typeOptions', noTypeOption);
+	return result;
+}
+
+function checkPicklistDependeciesIsArray(picklistFields, fileName) {
+	var attributes = ['field', 'typeOptions.picklistDependencies'];
+
+	var result = _.reduce(picklistFields, (acc, fieldDef) => {
+		if (_.has(fieldDef.typeOptions, 'picklistDependencies')) {
+			if(!_.isArray(fieldDef.typeOptions.picklistDependencies)) {
+				acc.push({ fieldDef, attributes });
 			}
 		}
 		return acc;
 	}, []);
 
-	PrintModule.printFields(fileName, result, 'picklistDependencies should be an array', 'typeOptions', 'picklistDependencies');
+	PrintModule.printFields(fileName, 'picklistDependencies should be an array', result);
 }
 
-function picklistsDefined(picklistIndex, fileName) {
-	var missingPicklistName = _.filter(picklistIndex, (fieldDef) => {
-		return !_.has(fieldDef, 'typeOptions.picklistName')
-	})
-	PrintModule.printFields(fileName, missingPicklistName, 'Picklist missing picklistName', 'typeOptions', 'picklistName');
+function picklistsHasPicklistName(picklistIndex, fileName) {
+	var attributes = ['field', 'typeOptions.picklistName'];
+
+	var missingPicklistName = _.reduce(picklistIndex, (acc, fieldDef) => {
+		if (!_.has(fieldDef, 'typeOptions.picklistName')) acc.push({ fieldDef, attributes });
+
+		return acc;
+	}, []);
+	PrintModule.printFields(fileName, 'Picklist missing picklistName', missingPicklistName);
 }
 
 function picklistsInOptions(picklistIndex, fileName) {
-	var optionsKeys = Object.keys(optionsPicklist);
-	var notInOptions = _.filter(picklistIndex, (fieldDef) => {
-		return !_.includes(optionsKeys, fieldDef.typeOptions.picklistName);
-	});
-
+	var attributes = ['field', 'typeOptions.picklistName'];
 	var itemsToExclude = excludeModule.picklists(fileName);
-	_.remove(notInOptions, (fieldDef) => {
-		return _.includes(itemsToExclude, fieldDef.typeOptions.picklistName);
-	});
-	PrintModule.printFields(fileName, notInOptions, 'Picklist missing from options.picklist', 'typeOptions', 'picklistName');
+
+	var optionsKeys = Object.keys(optionsPicklist);
+	var notInOptions = _.reduce(picklistIndex, (acc, fieldDef) => {
+		if (!_.includes(optionsKeys, fieldDef.typeOptions.picklistName) &&
+			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
+			acc.push({ fieldDef, attributes });
+		}
+
+		return acc;
+	}, []);
+
+	PrintModule.printFields(fileName, 'Picklist missing from options.picklist', notInOptions, 'typeOptions', 'picklistName');
 }
 
 function picklistJSONFileExists(picklistIndex, fileName) {
-	var notInFiles = _.filter(picklistIndex, (fieldDef) => {
-		return !_.includes(JSONfiles, fieldDef.typeOptions.picklistName + ".json");
-	});
-
+	var attributes = ['field', 'typeOptions.picklistName'];
 	var itemsToExclude = excludeModule.picklists(fileName);
-	_.remove(notInFiles, (fieldDef) => {
-		return _.includes(itemsToExclude, fieldDef.typeOptions.picklistName);
-	});
-	PrintModule.printFields(fileName, notInFiles, 'Picklist .json file missing from data/lists', 'typeOptions', 'picklistName');
+
+	var notInFiles = _.reduce(picklistIndex, (acc, fieldDef) => {
+		if (!_.includes(JSONfiles, fieldDef.typeOptions.picklistName + ".json") &&
+			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
+			acc.push({ fieldDef, attributes });
+		}
+
+		return acc;
+	}, []);
+
+	PrintModule.printFields(fileName, 'Picklist .json file missing from data/lists', notInFiles);
 }
 
 function picklistInEn(index, fileName) {
-	var configTranslations = _.filter(configEnUs.groups, (group) => {
-		return group.groupName === null;
-	});
-
-	var platformTranslations = _.filter(platformEnUs.groups, (group) => {
-		return group.groupName === null;
-	});
-
-	var translations = _.merge(
-		configTranslations[0].subgroups[0].translations,
-		platformTranslations[0].subgroups[0].translations
-	);
+	var attributes = ['field', 'typeOptions.picklistName'];
 
 	var enusKeys = Object.keys(translations);
-	var notInEnus = _.filter(index, (fieldDef) => {
-		return !_.includes(enusKeys, fieldDef.typeOptions.picklistName);
-	});
+	var notInEnus = _.reduce(index, (acc, fieldDef) => {
+		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName)) acc.push({ fieldDef, attributes });
+		return acc;
+	}, []);
 
-	PrintModule.printFields(fileName, notInEnus, 'Picklist translations missing form en_US', 'typeOptions', 'picklistName');
+	PrintModule.printFields(fileName, 'Picklist translations missing form en_US', notInEnus);
 }
 
 function picklistDependenciesMatchUp(picklistIndex, fileName) {
+	var attributes = ['field', 'typeOptions.picklistDependencies'];
+
 	var parentNotPicklist = [];
 	var dependenciesMisMatch = [];
 
@@ -301,22 +333,24 @@ function picklistDependenciesMatchUp(picklistIndex, fileName) {
 		if (!_.has(fieldDefClone.typeOptions, 'picklistDependencies')) return;
 
 		var parents = fieldDefClone.typeOptions.picklistDependencies;
+		if (!_.isArray(parents)) return;
+
 		var parent = parents.pop();
 		var parentFielfDef = _.filter(picklistIndex, def => def.field === parent);
 		if (_.isEmpty(parentFielfDef)) {
-			parentNotPicklist.push(fieldDef);
+			parentNotPicklist.push({ fieldDef, attributes });
 			return;
 		}
 
 		parentFielfDef = parentFielfDef[0];
 		if (_.has(parentFielfDef.typeOptions, 'picklistDependencies') &&
 			!_.isEqual(parents, parentFielfDef.typeOptions.picklistDependencies)) {
- 			dependenciesMisMatch.push(fieldDef);
+ 			dependenciesMisMatch.push({ fieldDef, attributes });
 		}
 	});
 
-	PrintModule.printFields(fileName, parentNotPicklist, 'PicklistDependencies is not a picklist', 'typeOptions', 'picklistDependencies');
-	PrintModule.printFields(fileName, dependenciesMisMatch, `PicklistDependencies doesn't match up with parents dependency` , 'typeOptions', 'picklistDependencies');
+	PrintModule.printFields(fileName, 'PicklistDependencies is not a picklist', parentNotPicklist);
+	PrintModule.printFields(fileName, `PicklistDependencies doesn't match up with parents dependency`, dependenciesMisMatch);
 }
 
 function parsePicklists(dataPath) {
@@ -398,18 +432,45 @@ function picklistHasWhiteSpace(picklist, fileName) {
 }
 
 function checkRadioTypeOptions(radios, fileName) {
-	var result = _.reduce(radios, (acc, field) => {
-		if (!_.has(field, 'typeOptions.radios')) {
-			acc.missingRadiosOption.push(field);
-		} else if (!_.isArray(field.typeOptions.radios)) {
-			acc.radiosOptionsNotArray.push(field);
+	var attributes = ['field', 'typeOptions.radios'];
+
+	var result = _.reduce(radios, (acc, fieldDef) => {
+		if (!_.has(fieldDef, 'typeOptions.radios')) {
+			acc.missingRadiosOption.push({ fieldDef, attributes });
+		} else if (!_.isArray(fieldDef.typeOptions.radios)) {
+			acc.radiosOptionsNotArray.push({ fieldDef, attributes });
 		}
 
 		return acc;
 	}, { missingRadiosOption: [], radiosOptionsNotArray: [] });
 
-	PrintModule.printRadios(fileName, 'Radios missing typeOptions.radios attribute', result.missingRadiosOption, ['field', 'typeOptions.radios']);
-	PrintModule.printRadios(fileName, 'typeOptions.radios is not an array', result.radiosOptionsNotArray, ['field', 'typeOptions.radios']);
+	PrintModule.printFields(fileName, 'Radios missing typeOptions.radios attribute', result.missingRadiosOption);
+	PrintModule.printFields(fileName, 'typeOptions.radios is not an array', result.radiosOptionsNotArray);
+}
+
+function checkRadioCaptionsHaveTranslations(radios, fileName) {
+	var enusKeys = Object.keys(translations);
+	var radiosWithoutCaption = [];
+
+	var result = _.reduce(radios, (acc, fieldDef) => {
+		if (!_.has(fieldDef, 'typeOptions.radios') || !_.isArray(fieldDef.typeOptions.radios)) return;
+
+		_.forEach(fieldDef.typeOptions.radios, (radioButton, index) => {
+			if (!_.has(radioButton, 'caption')) {
+				radiosWithoutCaption.push({ fieldDef, attributes: ['field', `typeOptions.radios.${index}.caption`], color: 'yellow'})
+				return;
+			}
+
+			if (!_.includes(enusKeys, radioButton.caption)) {
+				acc.push({ fieldDef, attributes: ['field', `typeOptions.radios.${index}.caption`] });
+			}
+		});
+
+		return acc;
+	}, []);
+
+	PrintModule.printFields(fileName, 'Radio caption missing translation', result);
+	PrintModule.printFields(fileName, 'Radio caption missing translation', radiosWithoutCaption);
 }
 
 function getFieldNames(index) {
@@ -445,8 +506,23 @@ function getRadioDefs(index, fileName) {
 	return picklistFields;
 }
 
+function getMergedTranslations() {
+	var configEnUs = require(process.argv[2] + '/data/translations/en_US.js');
+	var platformEnUs = require(process.argv[2] + '/node_modules/isight/script/data/translations/en_US.js');
+
+	var configTranslations = _.filter(configEnUs.groups, (group) => {
+		return group.groupName === null;
+	});
+
+	var platformTranslations = _.filter(platformEnUs.groups, (group) => {
+		return group.groupName === null;
+	});
+
+	return _.merge(configTranslations[0].subgroups[0].translations, platformTranslations[0].subgroups[0].translations);
+}
+
 function removeRawTemplates (data) {
-	_.remove(data, (fieldDef) => fieldDef.type === 'raw' );
+	_.remove(data, (option) => option.fieldDef.type === 'raw' );
 	return data;
 }
 
