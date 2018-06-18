@@ -341,7 +341,7 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 	var notInFiles = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.includes(JSONfiles, fieldDef.typeOptions.picklistName + ".json") &&
 			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
-			acc.push({ fieldDef, attributes });
+			acc.push({ fieldDef, attributes, color: 'yellow' });
 		}
 
 		return acc;
