@@ -341,7 +341,7 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 	var notInFiles = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.includes(JSONfiles, fieldDef.typeOptions.picklistName + ".json") &&
 			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
-			acc.push({ fieldDef, attributes, color: 'yellow' });
+			acc.push({ fieldDef, attributes, color: 'warn' });
 		}
 
 		return acc;
@@ -436,39 +436,37 @@ function picklistHasWhiteSpace(picklist, fileName) {
 			offending: []
 		};
 		_.forEach(itemKeys, (itemKey) => {
-			var offending = {
-				key: itemKey,
-				keyOffending: false,
-				valueOffending: false
-			};
+			var attributes = [];
+			var options = { fieldDef: item, attributes, color: 'default' };
 
 			if (itemKey !== _.trim(itemKey) && (typeof itemKey === 'string')) {
-				offending.keyOffending = true;
+				attributes.push(itemKey);
+				options.keyColor = 'error';
 			}
 
 			if (typeof item[itemKey] === 'string') {
 				var trimmedValue = _.trim(item[itemKey]);
 				if (trimmedValue !== item[itemKey]) {
-					offending.valueOffending = true;
+					if (!_.includes(attributes, itemKey)) attributes.push(itemKey);
+					options.color = 'error';
 				}
-			} else if (typeof item[itemKey] === 'object') {
+			} else if (_.isArray(item[itemKey])) {
 				item[itemKey].forEach(function(parentValue) {
 					if (_.trim(parentValue) !== parentValue) {
-						offending.valueOffending = true;
+						if (!_.includes(attributes, itemKey)) attributes.push(itemKey);
+						options.color = 'error';
 					}
-				})
+				});
 			}
 
-			if (offending.keyOffending || offending.valueOffending) {
-				result.offending = offending;
-				result.value = item;
-				acc.push(result);
+			if (!_.isEmpty(attributes)) {
+				acc.push(options);
 			}
 		});
 		return acc;
 	}, []);
 
-	PrintModule.printPicklists(fileName, whiteSpaceValues, 'Picklist has white space');
+	PrintModule.printFields(fileName, 'Picklist has white space', whiteSpaceValues);
 }
 
 function checkRadioTypeOptions(radios, fileName) {
@@ -497,7 +495,7 @@ function checkRadioCaptionsHaveTranslations(radios, fileName) {
 
 		_.forEach(fieldDef.typeOptions.radios, (radioButton, index) => {
 			if (!_.has(radioButton, 'caption')) {
-				radiosWithoutCaption.push({ fieldDef, attributes: ['field', `typeOptions.radios.${index}.caption`], color: 'yellow'})
+				radiosWithoutCaption.push({ fieldDef, attributes: ['field', `typeOptions.radios.${index}.caption`], color: 'warn'})
 				return;
 			}
 
