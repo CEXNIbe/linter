@@ -402,6 +402,7 @@ function parsePicklists(dataPath) {
 			var picklist = require(path.join(dataPath, file));
 			picklistValuesUniq(picklist, file);
 			picklistHasWhiteSpace(picklist, file);
+			picklistHasSameName(picklist, file);
 		});
 	} catch (err) {
 		console.error(`Error Parsing piclists`);
@@ -467,6 +468,17 @@ function picklistHasWhiteSpace(picklist, fileName) {
 	}, []);
 
 	PrintModule.printFields(fileName, 'Picklist has white space', whiteSpaceValues);
+}
+
+function picklistHasSameName(picklist, fileName) {
+	var arrayList = _.reduce(picklist, (acc, item) => {
+		if (!_.includes(acc, item.name)) acc.push(item.name);
+		return acc;
+	}, []);
+
+	if (_.size(arrayList) > 1) {
+		PrintModule.printArrayList(fileName, arrayList, 'Mulitple name values');
+	}
 }
 
 function checkRadioTypeOptions(radios, fileName) {
