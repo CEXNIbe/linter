@@ -49,10 +49,10 @@ module.exports = {
 function printField(option) {
 	var result = '{\n';
 	_.forEach(option.attributes, (key) => {
-		key = !!option.keyColor ? colors[option.keyColor](key) : key;
-		value = !!option.color ? colors[option.color](_.get(option.fieldDef, key)) : _.get(option.fieldDef, key);
+		var index = !!option.keyColor ? colors[option.keyColor](key) : key;
+		var value = !!option.color ? colors[option.color](_.get(option.fieldDef, key)) : _.get(option.fieldDef, key);
 
-		result += `\t${key}: ${value}\n`;
+		result += `\t${index}: ${value}\n`;
 	});
 	result += `}\n`;
 	console.log(result);
