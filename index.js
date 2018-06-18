@@ -212,10 +212,7 @@ function checkValidation(indexFile, indexFieldNames, fileName) {
 		var missingRules = [];
 
 		fieldNoExist = _.reduce(validation['dependentMandatory$'], (acc, validationRule) => {
-			// Check conditions exist
-			// _.forEach(validationRule.condition, (condition) => {
-				missingRules = _.concat(missingRules, getMissingRules(rules, validationRule.condition));
-			// });
+			missingRules = _.concat(missingRules, getMissingRules(rules, validationRule.condition));
 
 			_.forEach(validationRule.fields, (field) => {
 				if (!_.includes(indexFieldNames, field) && !_.includes(fieldsToExclude, field)) acc.push(field);
