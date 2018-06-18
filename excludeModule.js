@@ -18,7 +18,23 @@ module.exports = {
 
 	validationFieldsToExclude: function (filename) {
 		var exclude = [];
-		if (filename === 'user/validation.js') exclude.push('oldPassword', 'confirmedPassword');
-		return exclude
+
+		if (filename === 'user/validation.js') {
+			exclude.push('oldPassword', 'confirmedPassword');
+		} else if (filename === 'todo/validation.js') {
+			exclude.push('other');
+		}
+
+		return exclude;
+	},
+
+	validationConditionsToExclude: function (filename) {
+		var exclude = [];
+
+		if (filename === 'todo/validation.js') {
+			exclude.push('isTodoTypeOther')
+		}
+
+		return exclude;
 	}
 };

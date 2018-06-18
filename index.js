@@ -195,7 +195,8 @@ function checkFieldTypes(index, indexName) {
 
 function checkValidation(indexFile, indexFieldNames, fileName) {
 	var validation = indexFile.validation;
-	var fieldsToExclude = excludeModule.validationFieldsToExclude(fileName)
+	var fieldsToExclude = excludeModule.validationFieldsToExclude(fileName);
+	var conditionsToExclude = excludeModule.validationConditionsToExclude(fileName);
 	if (!validation) return;
 
 	if (_.has(validation, 'mandatory$')) {
@@ -213,6 +214,7 @@ function checkValidation(indexFile, indexFieldNames, fileName) {
 
 		fieldNoExist = _.reduce(validation['dependentMandatory$'], (acc, validationRule) => {
 			missingRules = _.concat(missingRules, getMissingRules(rules, validationRule.condition));
+			missingRules = _.remove(missingRules, (value) => _.includes(conditionsToExclude));
 
 			_.forEach(validationRule.fields, (field) => {
 				if (!_.includes(indexFieldNames, field) && !_.includes(fieldsToExclude, field)) acc.push(field);
