@@ -100,6 +100,7 @@ function testIndexFile(entity) {
 	var indexFieldNames = entity.indexFieldNames;
 	checkFieldTypes(indexFile.fields, indexNameWithPath);
 	checkValidation(indexFile, indexFieldNames, path.join(entity.name, 'validation.js'));
+	checkLengthOfFieldNames(indexFieldNames, indexNameWithPath);
 
 	var picklists = getPicklistDefs(indexFile.fields, indexNameWithPath);
 	picklists = checkPicklistHasTypeOptions(picklists, indexNameWithPath);
@@ -225,6 +226,15 @@ function checkValidation(indexFile, indexFieldNames, fileName) {
 		PrintModule.printArrayList(fileName, fieldNoExist, `dependentMandatory$ fields don't exist`);
 		PrintModule.printArrayList(fileName, missingRules, `condition missing from rules`);
 	}
+}
+
+function checkLengthOfFieldNames(indexFieldNames, indexNameWithPath) {
+	var result = _.filter(indexFieldNames, (fieldName) => {
+		snackCased = _.snakeCase(fieldName);
+		return _.size(snackCased) > 63;
+	});
+
+	PrintModule.printArrayList(indexNameWithPath, result, 'Field name too long, (\'tis truncated in db if name>63 after snake casing)');
 }
 
 function checkDisplayRulesExist(formDef, rules, fileName) {
