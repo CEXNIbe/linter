@@ -7,7 +7,15 @@ module.exports = {
 
 	displayRulesToExclude: function (filename) {
 		var exclude = [];
-		if (filename === 'todo-details-form.js') exclude.push('isNotNew');
+
+		if (filename === 'todo-details-form.js') {
+			exclude.push('isNotNew');
+		} else if (filename === 'file-details-form.js') {
+			exclude.push('isNotNew');
+		} else if (filename === 'note-details-form.js') {
+			exclude.push('isNotNew');
+		}
+
 		return exclude;
 	},
 
