@@ -234,7 +234,7 @@ function checkLengthOfFieldNames(indexFieldNames, indexNameWithPath) {
 		return _.size(snackCased) > 63;
 	});
 
-	PrintModule.printArrayList(indexNameWithPath, result, 'Field name too long, (\'tis truncated in db if name>63 after snake casing)');
+	PrintModule.printArrayList(indexNameWithPath, result, 'Field name too long, (\'tis truncated in db if name>64 after snake casing)');
 }
 
 function checkDisplayRulesExist(formDef, rules, fileName) {
