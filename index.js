@@ -159,11 +159,11 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	}
 	var attributes = ['field'];
 
-	var missingFields = _.reduce(form, function (acc, field) {
+	var missingFields = _.reduce(form, (acc, field) => {
 			if (field.type === 'section') {
 				var sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
 				if (!_.isEmpty(sectionFields)) {
-					sectionFields.forEach(function(sectionField) {
+					sectionFields.forEach((sectionField) => {
 						acc.push(sectionField);
 					});
 				}
@@ -461,7 +461,7 @@ function picklistHasWhiteSpace(picklist, fileName) {
 					options.color = 'error';
 				}
 			} else if (_.isArray(item[itemKey])) {
-				item[itemKey].forEach(function(parentValue) {
+				item[itemKey].forEach((parentValue) => {
 					if (_.trim(parentValue) !== parentValue) {
 						if (!_.includes(attributes, itemKey)) attributes.push(itemKey);
 						options.color = 'error';
