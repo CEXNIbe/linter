@@ -15,6 +15,7 @@ var fieldTypes = getFieldTypes();
 var entities = getEntities();
 var formNames = getFormNames();
 var formMapping = getFormMapping(formNames);
+var formSectionCaptions;
 
 _.forEach(entities, (entity) => testIndexFile(entity) );
 
@@ -136,7 +137,9 @@ function testForm(formName, formPath) {
 
 		entityIndexNames = entity.indexFieldNames;
 
+		formSectionCaptions = [];
 		checkFormFieldsInIndex(entityIndexNames, form, formName);
+		checkSectionCaptionsHaveTranslations(formSectionCaptions, formName);
 
 		if (!entity.indexFile.rules) return;
 
@@ -161,6 +164,7 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 
 	var missingFields = _.reduce(form, (acc, field) => {
 			if (field.type === 'section') {
+				if (field.caption) formSectionCaptions.push(field.caption);
 				var sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
 				if (!_.isEmpty(sectionFields)) {
 					sectionFields.forEach((sectionField) => {
@@ -179,6 +183,15 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 		PrintModule.printFields(fileName, 'Missing from Index file', missingFields);
 	}
 	return missingFields;
+}
+
+function checkSectionCaptionsHaveTranslations(formSectionCaptions, formName) {
+	var translationKeys = Object.keys(translations);
+	var result = _.filter(formSectionCaptions, (sectionCaption) => {
+		return !_.includes(translationKeys, sectionCaption);
+	});
+
+	PrintModule.printArrayList(formName, result, `section translations doesn't exist`);
 }
 
 function checkFieldTypes(index, indexName) {
