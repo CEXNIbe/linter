@@ -12,10 +12,11 @@ var JSONfiles = getPicklistJSONFiles();
 var fieldTypes = getFieldTypes();
 
 
+var formSectionCaptions;
+var formFileNameMapping = {};
 var entities = getEntities();
 var formNames = getFormNames();
 var formMapping = getFormMapping(formNames);
-var formSectionCaptions;
 
 _.forEach(entities, (entity) => testIndexFile(entity) );
 
@@ -78,6 +79,7 @@ function getFormMapping(forms) {
 		try {
 			var formName = parseForm(path.join(formPath, file), file).name;
 			var entityName = formName.slice(0, formName.indexOf('-'));
+			formFileNameMapping[file] = formName;
 
 			if (entities[entityName]) {
 				acc[formName] = entityName;
@@ -115,6 +117,8 @@ function testIndexFile(entity) {
 	var radios = getRadioDefs(indexFile.fields, indexNameWithPath);
 	checkRadioTypeOptions(radios, indexNameWithPath);
 	checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
+
+	checkMandatoryFieldsHaveNoDisplayRule(indexFile, indexNameWithPath);
 }
 
 
@@ -543,6 +547,32 @@ function checkRadioCaptionsHaveTranslations(radios, fileName) {
 
 	PrintModule.printFields(fileName, 'Radio caption missing translation', result);
 	PrintModule.printFields(fileName, 'Radio caption missing translation', radiosWithoutCaption);
+}
+
+function checkMandatoryFieldsHaveNoDisplayRule(indexFile, indexNameWithPath) {
+	var mandatoryFields = indexFile.validation ? indexFile.validation['mandatory$'] : [];
+	if (_.isEmpty(mandatoryFields)) return;
+
+	var entityFormNames = _.reduce(formFileNameMapping, (acc, formName, formFileName) => {
+		if (formMapping[formName] === indexFile.entity.name) acc.push(formFileName);
+		return acc;
+	}, []);
+
+	_.forEach(entityFormNames, (formName) => {
+		var formPath = path.join(process.argv[2], 'config', 'form-layouts', formName);
+		var form = parseForm(formPath, formName);
+
+		var result = _.reduce(form.elements, (acc, fieldDef) => {
+			var isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
+			if (isMandatoryField && _.has(fieldDef, 'displayRule')) {
+				acc.push({ fieldDef, attributes: ['field', 'displayRule'] });
+			}
+
+			return acc;
+		}, []);
+
+		PrintModule.printFields(formName, 'Mandatory field has a displayRule', result);
+	});
 }
 
 function getFieldNames(index) {
