@@ -565,7 +565,7 @@ function checkMandatoryFieldsHaveNoDisplayRule(indexFile, indexNameWithPath) {
 		var result = _.reduce(form.elements, (acc, fieldDef) => {
 			var isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
 			if (isMandatoryField && _.has(fieldDef, 'displayRule')) {
-				acc.push({ fieldDef, attributes: ['field', 'displayRule'] });
+				acc.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
 			}
 
 			return acc;
