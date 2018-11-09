@@ -118,7 +118,7 @@ function testIndexFile(entity) {
 	checkRadioTypeOptions(radios, indexNameWithPath);
 	checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
 
-	checkMandatoryFieldsHaveNoDisplayRule(indexFile, indexNameWithPath);
+	displayRulesOfValidationFields(indexFile, indexNameWithPath);
 }
 
 
@@ -549,9 +549,16 @@ function checkRadioCaptionsHaveTranslations(radios, fileName) {
 	PrintModule.printFields(fileName, 'Radio caption missing translation', radiosWithoutCaption);
 }
 
-function checkMandatoryFieldsHaveNoDisplayRule(indexFile, indexNameWithPath) {
+function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 	var mandatoryFields = indexFile.validation ? indexFile.validation['mandatory$'] : [];
-	if (_.isEmpty(mandatoryFields)) return;
+	var dependentMandatory = indexFile.validation ? indexFile.validation['dependentMandatory$'] : [];
+	var fieldConditionMapping;
+
+	if (_.isEmpty(mandatoryFields) && _.isEmpty(dependentMandatory)) return;
+
+	if (!_.isEmpty(dependentMandatory)) {
+		fieldConditionMapping = getDependentMandatoryFieldMapping(dependentMandatory);
+	}
 
 	var entityFormNames = _.reduce(formFileNameMapping, (acc, formName, formFileName) => {
 		if (formMapping[formName] === indexFile.entity.name) acc.push(formFileName);
@@ -565,14 +572,62 @@ function checkMandatoryFieldsHaveNoDisplayRule(indexFile, indexNameWithPath) {
 		var result = _.reduce(form.elements, (acc, fieldDef) => {
 			var isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
 			if (isMandatoryField && _.has(fieldDef, 'displayRule')) {
-				acc.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
+				acc.mandatoryFields.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
+			}
+
+			var isDependentMandatory = fieldConditionMapping && _.includes(Object.keys(fieldConditionMapping), fieldDef.field);
+			if (isDependentMandatory && _.has(fieldDef, 'displayRule')) {
+				_.forEach(fieldConditionMapping[fieldDef.field], (index) => {
+					var conditions = splitDisplayRule(dependentMandatory[index].condition);
+
+					// Remove isClosed Rule, temp hack, move to excludeModule
+					var isClosedIndex = conditions.indexOf('isClosed');
+					if (isClosedIndex > -1) conditions.splice(isClosedIndex, 1);
+
+					var displayRules = splitDisplayRule(fieldDef.displayRule);
+
+					_.forEach(conditions, (condition) => {
+						if (!_.includes(displayRules, condition)) {
+							acc.dependentMandatory.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
+						}
+					});
+					var every = _.every(conditions, condition => _.includes(displayRules, condition));
+					if (!every) {
+						acc.dependentMandatory.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
+						// console.log(every, fieldDef, formName);
+					}
+				});
 			}
 
 			return acc;
-		}, []);
+		}, { mandatoryFields: [], dependentMandatory: [] });
 
-		PrintModule.printFields(formName, 'Mandatory field has a displayRule', result);
+		PrintModule.printFields(formName, `mandatory$ field shouldn't have displayRule`, result.mandatoryFields);
+		PrintModule.printFields(formName, `dependentMandatory$ conditions don't match displayRule`, result.dependentMandatory);
 	});
+}
+
+function splitDisplayRule(displayRule) {
+	var splitRegex =  /\|\||&&/;
+	var displayRules = displayRule.split(splitRegex);
+	return _.map(displayRules, rule => {
+		rule = _.trim(rule);
+		return rule.replace(/[\W]/g, '');
+	});
+}
+
+function getDependentMandatoryFieldMapping(dependentMandatory) {
+	var fieldConditionMapping = {};
+	_.forEach(dependentMandatory, (rule, index) => {
+		_.forEach(rule.fields, (field) => {
+			if (fieldConditionMapping[field]) {
+				fieldConditionMapping[field].push(index)
+			} else {
+				fieldConditionMapping[field] = [index];
+			}
+		});
+	});
+	return fieldConditionMapping;
 }
 
 function getFieldNames(index) {
