@@ -1,8 +1,8 @@
 var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
-var PrintModule = require(__dirname + '/printModule.js');
-var excludeModule = require(__dirname + '/excludeModule.js');
+var PrintModule = require(__dirname + '/modules/printModule.js');
+var excludeModule = require(__dirname + '/modules/excludeModule.js');
 var defaultsModule = require(__dirname + '/defaults/defaults.js');
 
 

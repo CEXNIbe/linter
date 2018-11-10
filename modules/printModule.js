@@ -1,3 +1,8 @@
+/**
+	This module handles the console logging
+**/
+
+
 var _ = require('lodash');
 var colors = require('colors/safe');
 colors.setTheme({

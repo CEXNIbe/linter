@@ -1,3 +1,8 @@
+/**
+	This module defines files/items to exclude from error checking
+**/
+
+
 module.exports = {
 	picklists: function (filename) {
 		var exclude = [];
