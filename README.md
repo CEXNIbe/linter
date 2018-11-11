@@ -7,3 +7,6 @@
 	- `npm install`
 - Create an alias in your bash profile to run script from config_project_v5, e.g.:
 	- `alias lintconfig='sh /Users/nibe/git/workspace/wireframe_linter/LintConfig.sh'`
+
+### Configuration
+- You can add certain things to be disabled by exporting environment variables

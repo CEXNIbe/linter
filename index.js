@@ -1,22 +1,22 @@
-var _ = require('lodash');
-var fs = require('fs');
-var path = require('path');
-var PrintModule = require(__dirname + '/modules/printModule.js');
-var excludeModule = require(__dirname + '/modules/excludeModule.js');
-var defaultsModule = require(__dirname + '/defaults/defaults.js');
+let _ = require('lodash');
+let fs = require('fs');
+let path = require('path');
+let PrintModule = require(__dirname + '/utils/printModule.js');
+let excludeModule = require(__dirname + '/utils/excludeModule.js');
+let defaultsModule = require(__dirname + '/utils/defaults.js');
 
 
-var optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
-var translations = getMergedTranslations();
-var JSONfiles = getPicklistJSONFiles();
-var fieldTypes = getFieldTypes();
+let optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
+let translations = getMergedTranslations();
+let JSONfiles = getPicklistJSONFiles();
+let fieldTypes = getFieldTypes();
 
 
-var formSectionCaptions;
-var formFileNameMapping = {};
-var entities = getEntities();
-var formNames = getFormNames();
-var formMapping = getFormMapping(formNames);
+let formSectionCaptions;
+let formFileNameMapping = {};
+let entities = getEntities();
+let formNames = getFormNames();
+let formMapping = getFormMapping(formNames);
 
 _.forEach(entities, (entity) => testIndexFile(entity) );
 
@@ -35,19 +35,23 @@ PrintModule.printErrorsFound();
 							FUNCTIONS
 ----------------------------------------------------------------------*/
 
+/**
+*	Retrieves the entities listed in the config project
+*	@returns: object with entities and properties
+**/
 function getEntities() {
-	var entitiesPath = path.join(process.argv[2], 'entities');
-	var entityDir = fs.readdirSync(entitiesPath, 'utf8');
+	const entitiesPath = path.join(process.argv[2], 'entities');
+	const entityDir = fs.readdirSync(entitiesPath, 'utf8');
 
 	return _.reduce(entityDir, (acc, entityName) => {
 		if (entityName === 'index-ui.js' || _.startsWith(entityName, '.')) return acc;
 
 		try {
-			var entityIndexPath = path.join(entitiesPath, entityName, 'index.js');
+			const entityIndexPath = path.join(entitiesPath, entityName, 'index.js');
 			fs.statSync(entityIndexPath);
 
-			var entityIndex = require(entityIndexPath);
-			var entityMapper = entityIndex.entity;
+			const entityIndex = require(entityIndexPath);
+			const entityMapper = entityIndex.entity;
 			entityMapper.path = path.join(entitiesPath, entityName);
 			entityMapper.indexFile = entityIndex;
 			entityMapper.indexFieldNames = getFieldNames(entityIndex.fields);
@@ -64,21 +68,33 @@ function getEntities() {
 	}, {});
 }
 
+/**
+*	Retrieves the forms listed in the project form-layouts folder
+*	See exclude modules for forms excluded
+*	@returns: array containing the forms
+**/
 function getFormNames() {
-	var formPath = path.join(process.argv[2], 'config', 'form-layouts');
-	var forms = fs.readdirSync(formPath, 'utf8');
+	const formPath = path.join(process.argv[2], 'config', 'form-layouts');
+	const forms = fs.readdirSync(formPath, 'utf8');
 	return _.filter(forms, (form) => {
 		return path.extname(form) === '.js' && form !== 'index-ui.js'
-			&& !_.includes(excludeModule.formsToExclude, form);
+			&& !_.includes(excludeModule.formsToExclude(), form);
 	});
 }
 
+/**
+*	Builds a mapping of form to their entities
+*		based on the entity prefix on the form name ('case'-capture-fom)
+*	@returns: object with the form name as key & entity as value
+*		also includes forms not in the form-layout dir, see defaultsModule.formMapping
+*		e.g. { 'case-capture': 'case' }
+**/
 function getFormMapping(forms) {
-	var formPath = path.join(process.argv[2], 'config', 'form-layouts');
+	const formPath = path.join(process.argv[2], 'config', 'form-layouts');
 	return _.reduce(forms, (acc, file) => {
 		try {
-			var formName = parseForm(path.join(formPath, file), file).name;
-			var entityName = formName.slice(0, formName.indexOf('-'));
+			const formName = parseForm(path.join(formPath, file), file).name;
+			const entityName = formName.slice(0, formName.indexOf('-'));
 			formFileNameMapping[file] = formName;
 
 			if (entities[entityName]) {
@@ -96,16 +112,19 @@ function getFormMapping(forms) {
 	}, defaultsModule.formMapping);
 }
 
-
+/**
+*	Checks an entity file for errors.
+*	@param entity: the entity file to check for errors
+**/
 function testIndexFile(entity) {
-	var indexNameWithPath = path.join(entity.name, 'index.js');
-	var indexFile = entity.indexFile;
-	var indexFieldNames = entity.indexFieldNames;
+	const indexNameWithPath = path.join(entity.name, 'index.js');
+	const indexFile = entity.indexFile;
+	const indexFieldNames = entity.indexFieldNames;
 	checkFieldTypes(indexFile.fields, indexNameWithPath);
 	checkValidation(indexFile, indexFieldNames, path.join(entity.name, 'validation.js'));
 	checkLengthOfFieldNames(indexFieldNames, indexNameWithPath);
 
-	var picklists = getPicklistDefs(indexFile.fields, indexNameWithPath);
+	let picklists = getPicklistDefs(indexFile.fields, indexNameWithPath);
 	picklists = checkPicklistHasTypeOptions(picklists, indexNameWithPath);
 	checkPicklistDependeciesIsArray(picklists, indexNameWithPath);
 	picklistsHasPicklistName(picklists, indexNameWithPath);
@@ -114,23 +133,27 @@ function testIndexFile(entity) {
 	picklistJSONFileExists(picklists, indexNameWithPath);
 	picklistDependenciesMatchUp(picklists, indexNameWithPath);
 
-	var radios = getRadioDefs(indexFile.fields, indexNameWithPath);
+	const radios = getRadioDefs(indexFile.fields, indexNameWithPath);
 	checkRadioTypeOptions(radios, indexNameWithPath);
 	checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
 
 	displayRulesOfValidationFields(indexFile, indexNameWithPath);
 }
 
-
+/**
+*	Checks a form file for errors.
+*	@param formName: the name of the form to check (e.g. case-capture-form.js)
+*	@param formPath: the path of the form to check (e.g. only provided for forms not in the form-layout dir)
+**/
 function testForm(formName, formPath) {
 	// isPseudoForm if not official form, like case-tombstone
-	var isPseudoForm = !!formPath;
+	const isPseudoForm = !!formPath;
 	try {
 		if (!isPseudoForm) formPath = path.join(process.argv[2], 'config', 'form-layouts', formName);
 
-		var form = parseForm(formPath, formName);
+		const form = parseForm(formPath, formName);
 
-		var entity;
+		let entity;
 		if (isPseudoForm) {
 			entity = entities[formMapping[formName]];
 		} else {
@@ -160,23 +183,28 @@ function testForm(formName, formPath) {
 
 }
 
+/**
+*	Checks if the fields in a form are also in its index file
+*	@param indexFieldNames: an array with the list of fields in the index file
+*	@param form: the form to check
+*	@param fileName: the name of form
+**/
 function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	if (!_.isArray(form) && _.has(form, 'elements')) {
 		form = form.elements;
 	}
-	var attributes = ['field'];
+	const attributes = ['field'];
 
-	var missingFields = _.reduce(form, (acc, field) => {
+	let missingFields = _.reduce(form, (acc, field) => {
 			if (field.type === 'section') {
 				if (field.caption) formSectionCaptions.push(field.caption);
-				var sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
+				const sectionFields = checkFormFieldsInIndex(indexFieldNames, field);
 				if (!_.isEmpty(sectionFields)) {
 					sectionFields.forEach((sectionField) => {
 						acc.push(sectionField);
 					});
 				}
 			} else if (!_.includes(indexFieldNames, field.field)) {
-				if (fileName === 'training-details-form.js') console.log(field);
 				acc.push({ fieldDef: field, attributes });
 			}
 			return acc;
@@ -189,19 +217,29 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 	return missingFields;
 }
 
+/**
+*	Checks sections captions have translations
+*	@param formSectionCaptions: the captions of the sections to check
+*	@param formName: the name of the form the captions are on
+**/
 function checkSectionCaptionsHaveTranslations(formSectionCaptions, formName) {
-	var translationKeys = Object.keys(translations);
-	var result = _.filter(formSectionCaptions, (sectionCaption) => {
+	const translationKeys = Object.keys(translations);
+	const result = _.filter(formSectionCaptions, (sectionCaption) => {
 		return !_.includes(translationKeys, sectionCaption);
 	});
 
 	PrintModule.printArrayList(formName, result, `section translations doesn't exist`);
 }
 
+/**
+*	Checks the types of the fields in an index file
+*	@param index: the index file to check
+*	@param indexName: the name of the index file
+**/
 function checkFieldTypes(index, indexName) {
-	var attributes = ['field', 'type'];
+	const attributes = ['field', 'type'];
 
-	var shadyFieldTypes = _.reduce(index, (acc, fieldDef) => {
+	const shadyFieldTypes = _.reduce(index, (acc, fieldDef) => {
 		if (!_.includes(fieldTypes, fieldDef.type)) {
 			acc.push({ fieldDef, attributes })
 		}
@@ -211,14 +249,23 @@ function checkFieldTypes(index, indexName) {
 	PrintModule.printFields(indexName, 'Shady field types', shadyFieldTypes);
 }
 
+/**
+*	Compares the displayRule in form to the the validation conditions
+*	Checks if mandatory$ fields in the validation file have a displayRule
+*	Checks if the dependentMandatory$ fields have different conditions than
+*		the displayRules in the form
+*	@param indexFile: the entity index file (which has the validation attribute)
+*	@param indexFieldNames: the names of the fields in the index file
+*	@param fileName: the name of the form
+**/
 function checkValidation(indexFile, indexFieldNames, fileName) {
-	var validation = indexFile.validation;
-	var fieldsToExclude = excludeModule.validationFieldsToExclude(fileName);
-	var conditionsToExclude = excludeModule.validationConditionsToExclude(fileName);
+	const validation = indexFile.validation;
+	const fieldsToExclude = excludeModule.validationFieldsToExclude(fileName);
+	const conditionsToExclude = excludeModule.validationConditionsToExclude(fileName);
 	if (!validation) return;
 
 	if (_.has(validation, 'mandatory$')) {
-		var fieldNoExist = _.reduce(validation['mandatory$'], (acc, value) => {
+		const fieldNoExist = _.reduce(validation['mandatory$'], (acc, value) => {
 			if (!_.includes(indexFieldNames, value) && !_.includes(fieldsToExclude, value)) acc.push(value);
 			return acc;
 		}, []);
@@ -227,8 +274,8 @@ function checkValidation(indexFile, indexFieldNames, fileName) {
 	}
 
 	if (_.has(validation, 'dependentMandatory$')) {
-		var rules = Object.keys(indexFile.rules);
-		var missingRules = [];
+		const rules = Object.keys(indexFile.rules);
+		let missingRules = [];
 
 		fieldNoExist = _.reduce(validation['dependentMandatory$'], (acc, validationRule) => {
 			missingRules = _.concat(missingRules, getMissingRules(rules, validationRule.condition));
@@ -245,8 +292,14 @@ function checkValidation(indexFile, indexFieldNames, fileName) {
 	}
 }
 
+/**
+*	Checks if the field names in the index file are too long
+*	PSQL has a max identifier lenght of 63 characters, longer columns names will be truncated
+*	@param indexFieldNames: array list of fields in the index file to check
+*	@param indexNameWithPath: the name index file withe the entity name
+**/
 function checkLengthOfFieldNames(indexFieldNames, indexNameWithPath) {
-	var result = _.filter(indexFieldNames, (fieldName) => {
+	const result = _.filter(indexFieldNames, (fieldName) => {
 		snackCased = _.snakeCase(fieldName);
 		return _.size(snackCased) > 63;
 	});
@@ -254,21 +307,27 @@ function checkLengthOfFieldNames(indexFieldNames, indexNameWithPath) {
 	PrintModule.printArrayList(indexNameWithPath, result, 'Field name too long, (\'tis truncated in db if name>64 after snake casing)');
 }
 
+/**
+*	Checks if the display rules in the form exist
+*	@param formDef: the form to check
+*	@param rules: the display rules to check against
+*	@param fileName: the name of the file
+**/
 function checkDisplayRulesExist(formDef, rules, fileName) {
 	rules = Object.keys(rules);
-	var undefinedDR = getUnusedDisplayRules(formDef, rules);
+	let undefinedDR = getUndefinedDisplayRules(formDef, rules);
 	undefinedDR = _.uniq(undefinedDR);
 
-	var itemsToExclude = excludeModule.displayRulesToExclude(fileName);
+	const itemsToExclude = excludeModule.displayRulesToExclude(fileName);
 	_.remove(undefinedDR, (rule) => _.includes(itemsToExclude, rule));
 
 	PrintModule.printArrayList(fileName, undefinedDR, 'Undefined display rules')
 }
 
-function getUnusedDisplayRules(formDef, rules) {
+function getUndefinedDisplayRules(formDef, rules) {
 	return _.reduce(formDef, (acc, field) => {
 		if (field.elements) {
-			var nested = getUnusedDisplayRules(field.elements, rules);
+			const nested = getUndefinedDisplayRules(field.elements, rules);
 			acc.push.apply(acc, nested);
 		}
 
@@ -281,8 +340,8 @@ function getUnusedDisplayRules(formDef, rules) {
 }
 
 function getMissingRules(ruleKeys, displayRule) {
-	var splitRegex =  /\|\||&&/;
-	var displayRules = displayRule.split(splitRegex);
+	const splitRegex =  /\|\||&&/;
+	const displayRules = displayRule.split(splitRegex);
 	return _.reduce(displayRules, (acc, rule) => {
 		rule = _.trim(rule);
 		rule = rule.replace(/[^\w+]/g, '');
@@ -293,17 +352,17 @@ function getMissingRules(ruleKeys, displayRule) {
 }
 
 function getPicklistDefs(index, fileName) {
-	var picklistFields = _.filter(index, (fieldDef) => {
+	const picklistFields = _.filter(index, (fieldDef) => {
 		return fieldDef.type === 'picklist' || fieldDef.type === 'picklist[]';
 	});
 	return picklistFields;
 }
 
 function checkPicklistHasTypeOptions(picklistFields, fileName) {
-	var attributes = ['field', 'typeOptions'];
-	var noTypeOption = [];
+	const attributes = ['field', 'typeOptions'];
+	const noTypeOption = [];
 
-	var result = _.reduce(picklistFields, (acc, fieldDef) => {
+	const result = _.reduce(picklistFields, (acc, fieldDef) => {
 		if (_.has(fieldDef, 'typeOptions')) {
 			acc.push(fieldDef);
 		} else {
@@ -318,9 +377,9 @@ function checkPicklistHasTypeOptions(picklistFields, fileName) {
 }
 
 function checkPicklistDependeciesIsArray(picklistFields, fileName) {
-	var attributes = ['field', 'typeOptions.picklistDependencies'];
+	const attributes = ['field', 'typeOptions.picklistDependencies'];
 
-	var result = _.reduce(picklistFields, (acc, fieldDef) => {
+	const result = _.reduce(picklistFields, (acc, fieldDef) => {
 		if (_.has(fieldDef.typeOptions, 'picklistDependencies')) {
 			if(!_.isArray(fieldDef.typeOptions.picklistDependencies)) {
 				acc.push({ fieldDef, attributes });
@@ -333,9 +392,9 @@ function checkPicklistDependeciesIsArray(picklistFields, fileName) {
 }
 
 function picklistsHasPicklistName(picklistIndex, fileName) {
-	var attributes = ['field', 'typeOptions.picklistName'];
+	const attributes = ['field', 'typeOptions.picklistName'];
 
-	var missingPicklistName = _.reduce(picklistIndex, (acc, fieldDef) => {
+	const missingPicklistName = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.has(fieldDef, 'typeOptions.picklistName')) acc.push({ fieldDef, attributes });
 
 		return acc;
@@ -344,11 +403,11 @@ function picklistsHasPicklistName(picklistIndex, fileName) {
 }
 
 function picklistsInOptions(picklistIndex, fileName) {
-	var attributes = ['field', 'typeOptions.picklistName'];
-	var itemsToExclude = excludeModule.picklists(fileName);
+	const attributes = ['field', 'typeOptions.picklistName'];
+	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
-	var optionsKeys = Object.keys(optionsPicklist);
-	var notInOptions = _.reduce(picklistIndex, (acc, fieldDef) => {
+	const optionsKeys = Object.keys(optionsPicklist);
+	const notInOptions = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.includes(optionsKeys, fieldDef.typeOptions.picklistName) &&
 			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
 			acc.push({ fieldDef, attributes });
@@ -361,10 +420,10 @@ function picklistsInOptions(picklistIndex, fileName) {
 }
 
 function picklistJSONFileExists(picklistIndex, fileName) {
-	var attributes = ['field', 'typeOptions.picklistName'];
-	var itemsToExclude = excludeModule.picklists(fileName);
+	const attributes = ['field', 'typeOptions.picklistName'];
+	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
-	var notInFiles = _.reduce(picklistIndex, (acc, fieldDef) => {
+	const notInFiles = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.includes(JSONfiles, fieldDef.typeOptions.picklistName + ".json") &&
 			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
 			acc.push({ fieldDef, attributes, color: 'warn' });
@@ -377,10 +436,10 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 }
 
 function picklistInEn(index, fileName) {
-	var attributes = ['field', 'typeOptions.picklistName'];
+	const attributes = ['field', 'typeOptions.picklistName'];
 
-	var enusKeys = Object.keys(translations);
-	var notInEnus = _.reduce(index, (acc, fieldDef) => {
+	const enusKeys = Object.keys(translations);
+	const notInEnus = _.reduce(index, (acc, fieldDef) => {
 		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName)) acc.push({ fieldDef, attributes });
 		return acc;
 	}, []);
@@ -389,20 +448,20 @@ function picklistInEn(index, fileName) {
 }
 
 function picklistDependenciesMatchUp(picklistIndex, fileName) {
-	var attributes = ['field', 'typeOptions.picklistDependencies'];
+	const attributes = ['field', 'typeOptions.picklistDependencies'];
 
-	var parentNotPicklist = [];
-	var dependenciesMisMatch = [];
+	const parentNotPicklist = [];
+	const dependenciesMisMatch = [];
 
 	_.forEach(picklistIndex, (fieldDef) => {
-		var fieldDefClone = _.cloneDeep(fieldDef);
+		const fieldDefClone = _.cloneDeep(fieldDef);
 		if (!_.has(fieldDefClone.typeOptions, 'picklistDependencies')) return;
 
-		var parents = fieldDefClone.typeOptions.picklistDependencies;
+		const parents = fieldDefClone.typeOptions.picklistDependencies;
 		if (!_.isArray(parents)) return;
 
-		var parent = parents.pop();
-		var parentFielfDef = _.filter(picklistIndex, def => def.field === parent);
+		const parent = parents.pop();
+		let parentFielfDef = _.filter(picklistIndex, def => def.field === parent);
 		if (_.isEmpty(parentFielfDef)) {
 			parentNotPicklist.push({ fieldDef, attributes });
 			return;
@@ -421,11 +480,11 @@ function picklistDependenciesMatchUp(picklistIndex, fileName) {
 
 function parsePicklists(dataPath) {
 	try {
-		var files = fs.readdirSync(dataPath);
+		const files = fs.readdirSync(dataPath);
 		_.forEach(files, (file) => {
 			if (path.extname(file) != '.json') return;
 
-			var picklist = require(path.join(dataPath, file));
+			const picklist = require(path.join(dataPath, file));
 			picklistValuesUniq(picklist, file);
 			picklistHasWhiteSpace(picklist, file);
 			picklistHasSameName(picklist, file);
@@ -438,11 +497,11 @@ function parsePicklists(dataPath) {
 }
 
 function picklistValuesUniq(picklist, fileName) {
-	var uniqValues = _.uniqWith(picklist, _.isEqual);
+	const uniqValues = _.uniqWith(picklist, _.isEqual);
 
 	if (picklist.length !== uniqValues.length) {
-		var result = _.reduce(picklist, (acc, item, index, arr) => {
-			var containsDup = _.some(arr.slice(index + 1), (compItem) => {
+		const result = _.reduce(picklist, (acc, item, index, arr) => {
+			const containsDup = _.some(arr.slice(index + 1), (compItem) => {
 				return _.isEqual(item, compItem);
 			});
 
@@ -457,14 +516,14 @@ function picklistValuesUniq(picklist, fileName) {
 }
 
 function picklistHasWhiteSpace(picklist, fileName) {
-	var whiteSpaceValues = _.reduce(picklist, (acc, item) => {
-		var itemKeys = _.keys(item);
-		var result = {
+	const whiteSpaceValues = _.reduce(picklist, (acc, item) => {
+		const itemKeys = _.keys(item);
+		const result = {
 			offending: []
 		};
 		_.forEach(itemKeys, (itemKey) => {
-			var attributes = [];
-			var options = { fieldDef: item, attributes, color: 'default' };
+			const attributes = [];
+			const options = { fieldDef: item, attributes, color: 'default' };
 
 			if (itemKey !== _.trim(itemKey) && (typeof itemKey === 'string')) {
 				attributes.push(itemKey);
@@ -472,7 +531,7 @@ function picklistHasWhiteSpace(picklist, fileName) {
 			}
 
 			if (typeof item[itemKey] === 'string') {
-				var trimmedValue = _.trim(item[itemKey]);
+				const trimmedValue = _.trim(item[itemKey]);
 				if (trimmedValue !== item[itemKey]) {
 					if (!_.includes(attributes, itemKey)) attributes.push(itemKey);
 					options.color = 'error';
@@ -497,7 +556,7 @@ function picklistHasWhiteSpace(picklist, fileName) {
 }
 
 function picklistHasSameName(picklist, fileName) {
-	var arrayList = _.reduce(picklist, (acc, item) => {
+	const arrayList = _.reduce(picklist, (acc, item) => {
 		if (!_.includes(acc, item.name)) acc.push(item.name);
 		return acc;
 	}, []);
@@ -508,9 +567,9 @@ function picklistHasSameName(picklist, fileName) {
 }
 
 function checkRadioTypeOptions(radios, fileName) {
-	var attributes = ['field', 'typeOptions.radios'];
+	const attributes = ['field', 'typeOptions.radios'];
 
-	var result = _.reduce(radios, (acc, fieldDef) => {
+	const result = _.reduce(radios, (acc, fieldDef) => {
 		if (!_.has(fieldDef, 'typeOptions.radios')) {
 			acc.missingRadiosOption.push({ fieldDef, attributes });
 		} else if (!_.isArray(fieldDef.typeOptions.radios)) {
@@ -525,10 +584,10 @@ function checkRadioTypeOptions(radios, fileName) {
 }
 
 function checkRadioCaptionsHaveTranslations(radios, fileName) {
-	var enusKeys = Object.keys(translations);
-	var radiosWithoutCaption = [];
+	const enusKeys = Object.keys(translations);
+	const radiosWithoutCaption = [];
 
-	var result = _.reduce(radios, (acc, fieldDef) => {
+	const result = _.reduce(radios, (acc, fieldDef) => {
 		if (!_.has(fieldDef, 'typeOptions.radios') || !_.isArray(fieldDef.typeOptions.radios)) return;
 
 		_.forEach(fieldDef.typeOptions.radios, (radioButton, index) => {
@@ -550,9 +609,9 @@ function checkRadioCaptionsHaveTranslations(radios, fileName) {
 }
 
 function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
-	var mandatoryFields = indexFile.validation ? indexFile.validation['mandatory$'] : [];
-	var dependentMandatory = indexFile.validation ? indexFile.validation['dependentMandatory$'] : [];
-	var fieldConditionMapping;
+	const mandatoryFields = indexFile.validation ? indexFile.validation['mandatory$'] : [];
+	const dependentMandatory = indexFile.validation ? indexFile.validation['dependentMandatory$'] : [];
+	let fieldConditionMapping;
 
 	if (_.isEmpty(mandatoryFields) && _.isEmpty(dependentMandatory)) return;
 
@@ -560,41 +619,38 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 		fieldConditionMapping = getDependentMandatoryFieldMapping(dependentMandatory);
 	}
 
-	var entityFormNames = _.reduce(formFileNameMapping, (acc, formName, formFileName) => {
+	const entityFormNames = _.reduce(formFileNameMapping, (acc, formName, formFileName) => {
 		if (formMapping[formName] === indexFile.entity.name) acc.push(formFileName);
 		return acc;
 	}, []);
 
 	_.forEach(entityFormNames, (formName) => {
-		var formPath = path.join(process.argv[2], 'config', 'form-layouts', formName);
-		var form = parseForm(formPath, formName);
+		const formPath = path.join(process.argv[2], 'config', 'form-layouts', formName);
+		const form = parseForm(formPath, formName);
 
-		var result = _.reduce(form.elements, (acc, fieldDef) => {
-			var isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
+		const result = _.reduce(form.elements, (acc, fieldDef) => {
+			const isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
 			if (isMandatoryField && _.has(fieldDef, 'displayRule')) {
 				acc.mandatoryFields.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
 			}
 
-			var isDependentMandatory = fieldConditionMapping && _.includes(Object.keys(fieldConditionMapping), fieldDef.field);
+			const isDependentMandatory = fieldConditionMapping && _.includes(Object.keys(fieldConditionMapping), fieldDef.field);
 			if (isDependentMandatory && _.has(fieldDef, 'displayRule')) {
 				_.forEach(fieldConditionMapping[fieldDef.field], (index) => {
-					var conditions = splitDisplayRule(dependentMandatory[index].condition);
+					const conditions = splitDisplayRule(dependentMandatory[index].condition);
 
-					// Remove isClosed Rule, temp hack, move to excludeModule
-					var isClosedIndex = conditions.indexOf('isClosed');
-					if (isClosedIndex > -1) conditions.splice(isClosedIndex, 1);
+					_.remove(conditions, (con) => excludeModule.displayRulesToExclude(formName).includes(con));
 
-					var displayRules = splitDisplayRule(fieldDef.displayRule);
+					const displayRules = splitDisplayRule(fieldDef.displayRule);
 
 					_.forEach(conditions, (condition) => {
 						if (!_.includes(displayRules, condition)) {
 							acc.dependentMandatory.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
 						}
 					});
-					var every = _.every(conditions, condition => _.includes(displayRules, condition));
+					const every = _.every(conditions, condition => _.includes(displayRules, condition));
 					if (!every) {
 						acc.dependentMandatory.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
-						// console.log(every, fieldDef, formName);
 					}
 				});
 			}
@@ -608,8 +664,8 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 }
 
 function splitDisplayRule(displayRule) {
-	var splitRegex =  /\|\||&&/;
-	var displayRules = displayRule.split(splitRegex);
+	const splitRegex =  /\|\||&&/;
+	const displayRules = displayRule.split(splitRegex);
 	return _.map(displayRules, rule => {
 		rule = _.trim(rule);
 		return rule.replace(/[\W]/g, '');
@@ -617,7 +673,7 @@ function splitDisplayRule(displayRule) {
 }
 
 function getDependentMandatoryFieldMapping(dependentMandatory) {
-	var fieldConditionMapping = {};
+	const fieldConditionMapping = {};
 	_.forEach(dependentMandatory, (rule, index) => {
 		_.forEach(rule.fields, (field) => {
 			if (fieldConditionMapping[field]) {
@@ -639,15 +695,15 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	var fieldTypes = require(__dirname + '/defaults/field_types.js');
+	const fieldTypes = require(__dirname + '/utils/fieldTypes.js');
 
-	var fieldTypesPath = process.argv[2] + '/field-types';
+	const fieldTypesPath = process.argv[2] + '/field-types';
 	if (fs.existsSync(fieldTypesPath)) {
-		var files = fs.readdirSync(fieldTypesPath);
+		const files = fs.readdirSync(fieldTypesPath);
 
 		_.forEach(files, (file) => {
 			if (fs.existsSync(fieldTypesPath + `/${file}/index.js`)) {
-				var fieldIndex = require(fieldTypesPath + `/${file}/index.js`);
+				const fieldIndex = require(fieldTypesPath + `/${file}/index.js`);
 				fieldTypes.push(fieldIndex.name);
 			}
 		})
@@ -657,21 +713,21 @@ function getFieldTypes(){
 }
 
 function getRadioDefs(index, fileName) {
-	var picklistFields = _.filter(index, (fieldDef) => {
+	const picklistFields = _.filter(index, (fieldDef) => {
 		return fieldDef.type === 'radio';
 	});
 	return picklistFields;
 }
 
 function getMergedTranslations() {
-	var configEnUs = require(process.argv[2] + '/data/translations/en_US.js');
-	var platformEnUs = require(process.argv[2] + '/node_modules/isight/script/data/translations/en_US.js');
+	const configEnUs = require(process.argv[2] + '/data/translations/en_US.js');
+	const platformEnUs = require(process.argv[2] + '/node_modules/isight/script/data/translations/en_US.js');
 
-	var configTranslations = _.filter(configEnUs.groups, (group) => {
+	const configTranslations = _.filter(configEnUs.groups, (group) => {
 		return group.groupName === null;
 	});
 
-	var platformTranslations = _.filter(platformEnUs.groups, (group) => {
+	const platformTranslations = _.filter(platformEnUs.groups, (group) => {
 		return group.groupName === null;
 	});
 
@@ -684,11 +740,11 @@ function removeRawTemplates (data) {
 }
 
 function parseForm(filePath, filename) {
-	var form = null;
+	let form = null;
 	try {
 		form = require(filePath);
 	} catch (error) {
-		var tempForm = fs.readFileSync(filePath, 'utf-8');
+		let tempForm = fs.readFileSync(filePath, 'utf-8');
 		tempForm = tempForm.split('\n');
 
 		tempForm = _.map(tempForm, (line, index, arr) => {
@@ -698,7 +754,7 @@ function parseForm(filePath, filename) {
 				if (line.match(/(\)|\),)$/)) {
 					line = _.replace(line, ')', '');
 				} else {
-					var nextLine = arr[index+1];
+					const nextLine = arr[index+1];
 					if (nextLine.match(/(\)|\),)$/)) {
 						arr[index+1] = _.replace(nextLine, ')', '');
 					}
