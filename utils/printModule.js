@@ -3,8 +3,8 @@
 **/
 
 
-var _ = require('lodash');
-var colors = require('colors/safe');
+let _ = require('lodash');
+let colors = require('colors/safe');
 colors.setTheme({
 	silly: 'rainbow',
 	input: 'grey',
@@ -18,7 +18,7 @@ colors.setTheme({
 	error: 'red'
 });
 
-var noErrorFound = true;
+let noErrorFound = true;
 
 module.exports = {
 	printFields: (fileName, message, options) => {
@@ -52,10 +52,10 @@ module.exports = {
 }
 
 function printField(option) {
-	var result = '{\n';
+	let result = '{\n';
 	_.forEach(option.attributes, (key) => {
-		var index = !!option.keyColor ? colors[option.keyColor](key) : key;
-		var value = !!option.color ? colors[option.color](_.get(option.fieldDef, key)) : _.get(option.fieldDef, key);
+		const index = !!option.keyColor ? colors[option.keyColor](key) : key;
+		const value = !!option.color ? colors[option.color](_.get(option.fieldDef, key)) : _.get(option.fieldDef, key);
 
 		result += `\t${index}: ${value}\n`;
 	});

@@ -4,14 +4,17 @@
 
 
 module.exports = {
-	picklists: function (filename) {
-		var exclude = [];
+	picklistsToExclude: (filename) => {
+		const exclude = [];
 		if (filename === 'user/index.js') exclude.push('user_status');
 		return exclude;
 	},
 
-	displayRulesToExclude: function (filename) {
-		var exclude = [];
+	displayRulesToExclude: (filename) => {
+		const exclude = [ 'isClosed', ];
+
+		let envDrRules = getEnvironmentVariable('LINTER_DIR_DISPLAY_RULES_TO_EXCLUDE');
+		envDrRules.forEach((rule) => exclude.push(rule));
 
 		if (filename === 'todo-details-form.js') {
 			exclude.push('isNotNew');
@@ -24,13 +27,18 @@ module.exports = {
 		return exclude;
 	},
 
-	formsToExclude: [
-		'case-escalation-details-form.js',
-		'case-notification-details-form.js'
-	],
+	formsToExclude: () => {
+		let exclude = getEnvironmentVariable('LINTER_DIR_FORMS_TO_EXCLUDE');
 
-	validationFieldsToExclude: function (filename) {
-		var exclude = [];
+		return [
+			'case-escalation-details-form.js',
+			'case-notification-details-form.js',
+			...exclude
+		];
+	},
+
+	validationFieldsToExclude: (filename) => {
+		const exclude = [];
 
 		if (filename === 'user/validation.js') {
 			exclude.push('oldPassword', 'confirmedPassword');
@@ -41,8 +49,8 @@ module.exports = {
 		return exclude;
 	},
 
-	validationConditionsToExclude: function (filename) {
-		var exclude = [];
+	validationConditionsToExclude: (filename) => {
+		const exclude = [];
 
 		if (filename === 'todo/validation.js') {
 			exclude.push('isTodoTypeOther')
@@ -51,3 +59,10 @@ module.exports = {
 		return exclude;
 	}
 };
+
+function getEnvironmentVariable(envVar) {
+	let values = process.env[envVar];
+	if (values) return values.split(',');
+
+	return [];
+}
