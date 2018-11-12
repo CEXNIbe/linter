@@ -1,13 +1,17 @@
 let _ = require('lodash');
 let fs = require('fs');
 let path = require('path');
-let PrintModule = require(__dirname + '/utils/printModule.js');
-let excludeModule = require(__dirname + '/utils/excludeModule.js');
-let defaultsModule = require(__dirname + '/utils/defaults.js');
+let PrintModule = require(__dirname + '/modules/printModule.js');
+let excludeModule = require(__dirname + '/modules/excludeModule.js');
+let defaultsModule = require(__dirname + '/modules/defaults.js');
+let utils = require(__dirname + '/modules/utils.js')
 
 
 let optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
-let translations = getMergedTranslations();
+
+const platformEnUsPath = path.join(process.argv[2], 'node_modules/isight/script/data/translations/en_US.js');
+const configEnUsPath = path.join(process.argv[2], 'data/translations/en_US.js');
+let translations = utils.mergeTranslations(platformEnUsPath, configEnUsPath);
 let JSONfiles = getPicklistJSONFiles();
 let fieldTypes = getFieldTypes();
 
@@ -93,7 +97,7 @@ function getFormMapping(forms) {
 	const formPath = path.join(process.argv[2], 'config', 'form-layouts');
 	return _.reduce(forms, (acc, file) => {
 		try {
-			const formName = parseForm(path.join(formPath, file), file).name;
+			const formName = utils.parseForm(path.join(formPath, file), file).name;
 			const entityName = formName.slice(0, formName.indexOf('-'));
 			formFileNameMapping[file] = formName;
 
@@ -151,7 +155,7 @@ function testForm(formName, formPath) {
 	try {
 		if (!isPseudoForm) formPath = path.join(process.argv[2], 'config', 'form-layouts', formName);
 
-		const form = parseForm(formPath, formName);
+		const form = utils.parseForm(formPath, formName);
 
 		let entity;
 		if (isPseudoForm) {
@@ -211,7 +215,7 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 		}, []);
 
 	if (fileName) {
-		missingFields = removeRawTemplates(missingFields);
+		missingFields = utils.removeRawTemplates(missingFields);
 		PrintModule.printFields(fileName, 'Missing from Index file', missingFields);
 	}
 	return missingFields;
@@ -339,16 +343,15 @@ function getUndefinedDisplayRules(formDef, rules) {
 	}, []);
 }
 
-function getMissingRules(ruleKeys, displayRule) {
-	const splitRegex =  /\|\||&&/;
-	const displayRules = displayRule.split(splitRegex);
-	return _.reduce(displayRules, (acc, rule) => {
-		rule = _.trim(rule);
-		rule = rule.replace(/[^\w+]/g, '');
-		if (!_.includes(ruleKeys, rule)) acc.push(rule);
-
-		return acc;
-	}, []);
+/**
+*	Finds any rules missing from the ruleKeys
+*	@param ruleKeys: an array containing the names of the rules
+*	@param rules: the string displayRule or condition with the rules to check
+*	@returns: An array containing any rule in rules missing from ruleKeys
+**/
+function getMissingRules(ruleKeys, rules) {
+	rules = utils.splitRules(rules);
+	return _.filter(rules, (rule) => !_.includes(ruleKeys, rule));
 }
 
 function getPicklistDefs(index, fileName) {
@@ -626,7 +629,7 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 
 	_.forEach(entityFormNames, (formName) => {
 		const formPath = path.join(process.argv[2], 'config', 'form-layouts', formName);
-		const form = parseForm(formPath, formName);
+		const form = utils.parseForm(formPath, formName);
 
 		const result = _.reduce(form.elements, (acc, fieldDef) => {
 			const isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
@@ -637,11 +640,11 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 			const isDependentMandatory = fieldConditionMapping && _.includes(Object.keys(fieldConditionMapping), fieldDef.field);
 			if (isDependentMandatory && _.has(fieldDef, 'displayRule')) {
 				_.forEach(fieldConditionMapping[fieldDef.field], (index) => {
-					const conditions = splitDisplayRule(dependentMandatory[index].condition);
+					const conditions = utils.splitRules(dependentMandatory[index].condition);
 
 					_.remove(conditions, (con) => excludeModule.displayRulesToExclude(formName).includes(con));
 
-					const displayRules = splitDisplayRule(fieldDef.displayRule);
+					const displayRules = utils.splitRules(fieldDef.displayRule);
 
 					_.forEach(conditions, (condition) => {
 						if (!_.includes(displayRules, condition)) {
@@ -660,15 +663,6 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 
 		PrintModule.printFields(formName, `mandatory$ field shouldn't have displayRule`, result.mandatoryFields);
 		PrintModule.printFields(formName, `dependentMandatory$ conditions don't match displayRule`, result.dependentMandatory);
-	});
-}
-
-function splitDisplayRule(displayRule) {
-	const splitRegex =  /\|\||&&/;
-	const displayRules = displayRule.split(splitRegex);
-	return _.map(displayRules, rule => {
-		rule = _.trim(rule);
-		return rule.replace(/[\W]/g, '');
 	});
 }
 
@@ -695,7 +689,7 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	const fieldTypes = require(__dirname + '/utils/fieldTypes.js');
+	const fieldTypes = require(__dirname + '/modules/fieldTypes.js');
 
 	const fieldTypesPath = process.argv[2] + '/field-types';
 	if (fs.existsSync(fieldTypesPath)) {
@@ -717,56 +711,4 @@ function getRadioDefs(index, fileName) {
 		return fieldDef.type === 'radio';
 	});
 	return picklistFields;
-}
-
-function getMergedTranslations() {
-	const configEnUs = require(process.argv[2] + '/data/translations/en_US.js');
-	const platformEnUs = require(process.argv[2] + '/node_modules/isight/script/data/translations/en_US.js');
-
-	const configTranslations = _.filter(configEnUs.groups, (group) => {
-		return group.groupName === null;
-	});
-
-	const platformTranslations = _.filter(platformEnUs.groups, (group) => {
-		return group.groupName === null;
-	});
-
-	return _.merge(configTranslations[0].subgroups[0].translations, platformTranslations[0].subgroups[0].translations);
-}
-
-function removeRawTemplates (data) {
-	_.remove(data, (option) => option.fieldDef.type === 'raw' );
-	return data;
-}
-
-function parseForm(filePath, filename) {
-	let form = null;
-	try {
-		form = require(filePath);
-	} catch (error) {
-		let tempForm = fs.readFileSync(filePath, 'utf-8');
-		tempForm = tempForm.split('\n');
-
-		tempForm = _.map(tempForm, (line, index, arr) => {
-			if (_.startsWith(_.trim(line), 'template:')) {
-				line = _.replace(line, 'require(', '');
-
-				if (line.match(/(\)|\),)$/)) {
-					line = _.replace(line, ')', '');
-				} else {
-					const nextLine = arr[index+1];
-					if (nextLine.match(/(\)|\),)$/)) {
-						arr[index+1] = _.replace(nextLine, ')', '');
-					}
-				}
-
-			}
-			return line;
-		});
-
-		tempForm = _.join(tempForm, '\n');
-		fs.writeFileSync(__dirname + `/temp_files/${filename}`, tempForm);
-		form = require(__dirname + `/temp_files/${filename}`);
-	}
-	return form;
 }

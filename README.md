@@ -9,4 +9,4 @@
 	- `alias lintconfig='sh /Users/nibe/git/workspace/wireframe_linter/LintConfig.sh'`
 
 ### Configuration
-- You can add certain things to be disabled by exporting environment variables
+- You can add certain things to be disabled by exporting environment variables, see --help
