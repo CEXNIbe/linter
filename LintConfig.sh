@@ -6,7 +6,7 @@ nodeVersion=$(node -v | awk '{ print substr($1,2) }')
 if [ -z "$LINTER_DIR" ]; then
 	echo '---------------------------------------------------'
 	echo 'Environment variable LINTER_DIR not provided'
-	echo 'Please export LINTER_DIR=<path_of_wireframe_linter>'
+	echo 'Please export LINTER_DIR=<path/to/linter>'
 	echo '---------------------------------------------------'
 elif [[ $nodeVersion < 6 ]]; then
 	echo '---------------------------------------------------'
