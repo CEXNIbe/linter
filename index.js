@@ -124,6 +124,10 @@ function testIndexFile(entity) {
 	const indexNameWithPath = path.join(entity.name, 'index.js');
 	const indexFile = entity.indexFile;
 	const indexFieldNames = entity.indexFieldNames;
+
+	// Check for duplicates
+	checkForDuplicateFieldDefinitions(entity, indexNameWithPath);
+
 	checkFieldTypes(indexFile.fields, indexNameWithPath);
 	checkValidation(indexFile, indexFieldNames, path.join(entity.name, 'validation.js'));
 	checkLengthOfFieldNames(indexFieldNames, indexNameWithPath);
@@ -185,6 +189,47 @@ function testForm(formName, formPath) {
 		console.error(`Moving on...\n`);
 	}
 
+}
+
+/**
+*	Checks if an index file has duplicate field definitions
+*		Parses manual and searches file, since requiring file merges the fields
+*		Relies on index file being formatted "properly"
+*	@param entity: the entity to check for duplicate field defs
+*	@param indexNameWithPath: the name of the file
+**/
+function checkForDuplicateFieldDefinitions(entity, indexNameWithPath) {
+	const entitiesPath = path.join(process.argv[2], 'entities');
+	const indexFullPath = path.join(entitiesPath, entity.name, 'index.js');
+
+	try {
+		const lines = fs.readFileSync(indexFullPath, 'utf8').split(/\n/);
+		let res = _.reduce(lines, (acc, line) => {
+			var pattern = 'field:';
+			let match = line.match(pattern);
+			if (!match) return acc;
+
+			var patternEndIndex = match.index + pattern.length - 1;
+			var startIndex = _.findIndex(line, (val) => val === '\'', patternEndIndex);
+			var endIndex = _.findLastIndex(line, (val) => val === '\'');
+
+			var fieldName = line.slice(startIndex + 1, endIndex);
+
+			if (_.includes(acc.fields, fieldName)) {
+				acc.duplicates.push(fieldName);
+				return acc;
+			}
+
+			acc.fields.push(fieldName);
+			return acc;
+		}, { fields: [], duplicates: [] });
+
+		PrintModule.printArrayList(indexNameWithPath, res.duplicates, 'Duplicate field definitions');
+	} catch (err) {
+		console.error(`Error Parsing ${indexNameWithPath} for duplicate field definitions`);
+		console.error(err);
+		console.error(`Moving on...\n`);
+	}
 }
 
 /**
