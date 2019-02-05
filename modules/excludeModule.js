@@ -38,7 +38,7 @@ module.exports = {
 	},
 
 	validationFieldsToExclude: (filename) => {
-		const exclude = [];
+		const exclude = ['parentId'];
 
 		if (filename === 'user/validation.js') {
 			exclude.push('oldPassword', 'confirmedPassword');

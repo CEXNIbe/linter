@@ -224,6 +224,9 @@ function checkForDuplicateFieldDefinitions(entity, indexNameWithPath) {
 			return acc;
 		}, { fields: [], duplicates: [] });
 
+		const itemsToExclude = excludeModule.validationFieldsToExclude(indexNameWithPath);
+		_.remove(res.duplicates, (field) => _.includes(itemsToExclude, field));
+
 		PrintModule.printArrayList(indexNameWithPath, res.duplicates, 'Duplicate field definitions');
 	} catch (err) {
 		console.error(`Error Parsing ${indexNameWithPath} for duplicate field definitions`);
