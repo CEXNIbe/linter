@@ -46,10 +46,14 @@ module.exports = {
 					if (line.match(/(\)|\),)$/)) {
 						line = _.replace(line, ')', '');
 					} else {
-						const nextLine = arr[index+1];
-						if (nextLine.match(/(\)|\),)$/)) {
-							arr[index+1] = _.replace(nextLine, ')', '');
+						let nextIndex = index+1;
+						let nextLine = arr[nextIndex];
+						while (!nextLine.match(/(\)|\),)$/)) {
+							++nextIndex;
+							nextLine = arr[nextIndex];
 						}
+
+						arr[nextIndex] = _.replace(nextLine, ')', '');
 					}
 
 				}
