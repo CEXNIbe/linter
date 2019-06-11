@@ -24,6 +24,7 @@ module.exports = [
 	'picklistApi',
 	'picklist[]',
 	'postalcode',
+	'postalCode',
 	'primary',
 	'radio',
 	'sequenceNumber',
