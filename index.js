@@ -633,18 +633,23 @@ function picklistHasSameName(picklist, fileName) {
 }
 
 function checkRadioTypeOptions(radios, fileName) {
-	const attributes = ['field', 'typeOptions.radios'];
+	const attributes = ['field', 'typeOptions', 'typeOptions.radios'];
 
 	const result = _.reduce(radios, (acc, fieldDef) => {
-		if (!_.has(fieldDef, 'typeOptions.radios')) {
+		if (!fieldDef.typeOptions) {
+			acc.missingTypeOptions.push({ fieldDef, attributes });
+		} else if (config.platformVersionIsFive) {
+			return acc;
+		} else if (!_.has(fieldDef, 'typeOptions.radios')) {
 			acc.missingRadiosOption.push({ fieldDef, attributes });
 		} else if (!_.isArray(fieldDef.typeOptions.radios)) {
 			acc.radiosOptionsNotArray.push({ fieldDef, attributes });
 		}
 
 		return acc;
-	}, { missingRadiosOption: [], radiosOptionsNotArray: [] });
+	}, { missingRadiosOption: [], radiosOptionsNotArray: [], missingTypeOptions: [] });
 
+	PrintModule.printFields(fileName, 'Radios missing typeOptions attribute', result.missingTypeOptions);
 	PrintModule.printFields(fileName, 'Radios missing typeOptions.radios attribute', result.missingRadiosOption);
 	PrintModule.printFields(fileName, 'typeOptions.radios is not an array', result.radiosOptionsNotArray);
 }
