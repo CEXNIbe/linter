@@ -12,8 +12,9 @@ let optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
 const platformEnUsPath = path.join(process.argv[2], 'node_modules/isight/script/data/translations/en_US.js');
 const configEnUsPath = path.join(process.argv[2], 'data/translations/en_US.js');
 const translations = utils.mergeTranslations(platformEnUsPath, configEnUsPath);
+let picklistCaptions;
 if (config.platformVersionIsFive) {
-	const picklistCaptions = utils.mergePicklistCaptionTranslations(platformEnUsPath, configEnUsPath);
+	picklistCaptions = utils.mergePicklistCaptionTranslations(platformEnUsPath, configEnUsPath);
 }
 let JSONfiles = getPicklistJSONFiles();
 let fieldTypes = getFieldTypes();
