@@ -19,6 +19,6 @@ const platformVersion = getPlatformVersion();
 module.exports = {
 	PLATFORM_VERSIONS,
 	platformVersion,
-	platformVersionIsFive: platformVersion === PLATFORM_VERSIONS.FIVE
+	platformVersionIsFive: platformVersion === PLATFORM_VERSIONS.FIVE,
 	platformVersionIsFour: platformVersion === PLATFORM_VERSIONS.FOUR
 }

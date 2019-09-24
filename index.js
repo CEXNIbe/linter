@@ -264,6 +264,10 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 						acc.push(sectionField);
 					});
 				}
+			} else if (_.startsWith(field.field, 'caseId__')) {
+				// Ignoring Case Id Fields for now
+				// TODO: Incorporate caseId__ fields.
+				return acc;
 			} else if (!_.includes(indexFieldNames, field.field)) {
 				acc.push({ fieldDef: field, attributes });
 			}
