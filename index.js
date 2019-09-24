@@ -756,15 +756,27 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	const fieldTypes = require(`${__dirname}/modules/fieldTypes.js`);
+	const fieldTypes = [];
 
-	const fieldTypesPath = process.argv[2] + '/field-types';
+	const fieldTypesPath = `${process.argv[2]}/field-types`;
 	if (fs.existsSync(fieldTypesPath)) {
 		const files = fs.readdirSync(fieldTypesPath);
 
 		_.forEach(files, (file) => {
-			if (fs.existsSync(fieldTypesPath + `/${file}/index.js`)) {
-				const fieldIndex = require(fieldTypesPath + `/${file}/index.js`);
+			if (fs.existsSync(`${fieldTypesPath}/${file}/index.js`)) {
+				const fieldIndex = require(`${fieldTypesPath}/${file}/index.js`);
+				fieldTypes.push(fieldIndex.name);
+			}
+		})
+	}
+
+	const platformFieldTypes = `${process.argv[2]}/node_modules/isight/field-types`;
+	if (fs.existsSync(platformFieldTypes)) {
+		const files = fs.readdirSync(platformFieldTypes);
+
+		_.forEach(files, (file) => {
+			if (fs.existsSync(`${platformFieldTypes}/${file}/index.js`)) {
+				const fieldIndex = require(`${platformFieldTypes}/${file}/index.js`);
 				fieldTypes.push(fieldIndex.name);
 			}
 		})
