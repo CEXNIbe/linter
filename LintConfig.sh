@@ -8,7 +8,7 @@ if [ -z "$LINTER_DIR" ]; then
 	echo 'Environment variable LINTER_DIR not provided'
 	echo 'Please export LINTER_DIR=<path/to/linter>'
 	echo '---------------------------------------------------'
-elif [[ $nodeVersion < 6 ]]; then
+elif [[ $nodeVersion -lt 6 ]]; then
 	echo '---------------------------------------------------'
 	echo 'Unsupported node version' $(node -v)
 	echo '---------------------------------------------------'
@@ -26,6 +26,7 @@ Environment variables to exclude item from being checked
 		echo 'use --help or -h to see more info'
 	fi
 else
+	node $projectDir/config.js $workingDir
 	mkdir $projectDir/temp_files
 	node $projectDir/index.js $workingDir
 	rm -rf $projectDir/temp_files
