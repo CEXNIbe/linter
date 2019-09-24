@@ -1,12 +1,13 @@
 /**
 	This module defines files/items to exclude from error checking
 **/
-
+const config = require(`${__dirname}/../config.js`);
 
 module.exports = {
 	picklistsToExclude: (filename) => {
 		const exclude = [];
 		if (filename === 'user/index.js') exclude.push('user_status');
+		if (config.platformVersionIsFive) exclude.push('record_sources');
 		return exclude;
 	},
 

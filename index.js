@@ -1,17 +1,20 @@
 let _ = require('lodash');
 let fs = require('fs');
 let path = require('path');
-let PrintModule = require(__dirname + '/modules/printModule.js');
-let excludeModule = require(__dirname + '/modules/excludeModule.js');
-let defaultsModule = require(__dirname + '/modules/defaults.js');
-let utils = require(__dirname + '/modules/utils.js')
-
+let PrintModule = require(`${__dirname}/modules/printModule.js`);
+let excludeModule = require(`${__dirname}/modules/excludeModule.js`);
+let defaultsModule = require(`${__dirname}/modules/defaults.js`);
+let utils = require(`${__dirname}/modules/utils.js`);
+const config = require(`${__dirname}/config.js`);
 
 let optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
 
 const platformEnUsPath = path.join(process.argv[2], 'node_modules/isight/script/data/translations/en_US.js');
 const configEnUsPath = path.join(process.argv[2], 'data/translations/en_US.js');
-let translations = utils.mergeTranslations(platformEnUsPath, configEnUsPath);
+const translations = utils.mergeTranslations(platformEnUsPath, configEnUsPath);
+if (config.platformVersionIsFive) {
+	const picklistCaptions = utils.mergePicklistCaptionTranslations(platformEnUsPath, configEnUsPath);
+}
 let JSONfiles = getPicklistJSONFiles();
 let fieldTypes = getFieldTypes();
 
@@ -48,7 +51,10 @@ function getEntities() {
 	const entityDir = fs.readdirSync(entitiesPath, 'utf8');
 
 	return _.reduce(entityDir, (acc, entityName) => {
-		if (entityName === 'index-ui.js' || _.startsWith(entityName, '.')) return acc;
+		const folderPath = path.join(entitiesPath, entityName);
+		const stats = fs.statSync(folderPath);
+
+		if (!stats.isDirectory()) return acc;
 
 		try {
 			const entityIndexPath = path.join(entitiesPath, entityName, 'index.js');
@@ -143,7 +149,9 @@ function testIndexFile(entity) {
 
 	const radios = getRadioDefs(indexFile.fields, indexNameWithPath);
 	checkRadioTypeOptions(radios, indexNameWithPath);
-	checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
+	if (config.platformVersionIsFour) {
+		checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
+	}
 
 	displayRulesOfValidationFields(indexFile, indexNameWithPath);
 }
@@ -488,14 +496,16 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 
 function picklistInEn(index, fileName) {
 	const attributes = ['field', 'typeOptions.picklistName'];
+	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
-	const enusKeys = Object.keys(translations);
+	const enusKeys = config.platformVersionIsFive ? Object.keys(translations) : Object.keys(picklistCaptions);
 	const notInEnus = _.reduce(index, (acc, fieldDef) => {
+		if (itemsToExclude.includes(fieldDef.typeOptions.picklistName)) return acc;
 		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName)) acc.push({ fieldDef, attributes });
 		return acc;
 	}, []);
 
-	PrintModule.printFields(fileName, 'Picklist translations missing form en_US', notInEnus);
+	PrintModule.printFields(fileName, 'Picklist translations missing from en_US', notInEnus);
 }
 
 function picklistDependenciesMatchUp(picklistIndex, fileName) {
@@ -737,7 +747,7 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	const fieldTypes = require(__dirname + '/modules/fieldTypes.js');
+	const fieldTypes = require(`${__dirname}/modules/fieldTypes.js`);
 
 	const fieldTypesPath = process.argv[2] + '/field-types';
 	if (fs.existsSync(fieldTypesPath)) {

@@ -14,7 +14,11 @@ function getPlatformVersion() {
 	return PLATFORM_VERSIONS.unknown;
 }
 
+const platformVersion = getPlatformVersion();
+
 module.exports = {
-	platformVersion: getPlatformVersion(),
-	PLATFORM_VERSIONS
+	PLATFORM_VERSIONS,
+	platformVersion,
+	platformVersionIsFive: platformVersion === PLATFORM_VERSIONS.FIVE
+	platformVersionIsFour: platformVersion === PLATFORM_VERSIONS.FOUR
 }
