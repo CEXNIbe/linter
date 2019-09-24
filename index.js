@@ -266,6 +266,8 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 				// Ignoring Case Id Fields for now
 				// TODO: Incorporate caseId__ fields.
 				return acc;
+			} else if (!field.field) {
+				return acc;
 			} else if (!_.includes(indexFieldNames, field.field)) {
 				acc.push({ fieldDef: field, attributes });
 			}
