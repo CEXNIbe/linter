@@ -54,7 +54,6 @@ function getEntities() {
 	return _.reduce(entityDir, (acc, entityName) => {
 		const folderPath = path.join(entitiesPath, entityName);
 		const stats = fs.statSync(folderPath);
-
 		if (!stats.isDirectory()) return acc;
 
 		try {
@@ -64,6 +63,7 @@ function getEntities() {
 			const entityIndex = require(entityIndexPath);
 			const entityMapper = entityIndex.entity;
 			entityMapper.path = path.join(entitiesPath, entityName);
+			entityMapper.indexPath = entityIndexPath;
 			entityMapper.indexFile = entityIndex;
 			entityMapper.indexFieldNames = getFieldNames(entityIndex.fields);
 
@@ -208,11 +208,8 @@ function testForm(formName, formPath) {
 *	@param indexNameWithPath: the name of the file
 **/
 function checkForDuplicateFieldDefinitions(entity, indexNameWithPath) {
-	const entitiesPath = path.join(process.argv[2], 'entities');
-	const indexFullPath = path.join(entitiesPath, entity.name, 'index.js');
-
 	try {
-		const lines = fs.readFileSync(indexFullPath, 'utf8').split(/\n/);
+		const lines = fs.readFileSync(entity.indexPath, 'utf8').split(/\n/);
 		let res = _.reduce(lines, (acc, line) => {
 			var pattern = 'field:';
 			let match = line.match(pattern);
