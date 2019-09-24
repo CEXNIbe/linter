@@ -7,10 +7,11 @@ const PLATFORM_VERSIONS = {
 function getPlatformVersion() {
 	const packageFile = require(`${process.argv[2]}/package.json`);
 	let isightVersion = packageFile.dependencies.isight;
+	// Taking a shortcut for now
+	if (!isightVersion) return PLATFORM_VERSIONS.FOUR;
 	const tagIndex = isightVersion.indexOf('#') + 1;
 	const tag = isightVersion.slice(tagIndex);
 	if (tag.startsWith('v5')) return PLATFORM_VERSIONS.FIVE;
-	if (tag.startsWith('v4')) return PLATFORM_VERSIONS.FOUR;
 	return PLATFORM_VERSIONS.unknown;
 }
 

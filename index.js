@@ -502,7 +502,7 @@ function picklistInEn(index, fileName) {
 	const attributes = ['field', 'typeOptions.picklistName'];
 	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
-	const enusKeys = config.platformVersionIsFive ? Object.keys(translations) : Object.keys(picklistCaptions);
+	const enusKeys = config.platformVersionIsFive ? Object.keys(picklistCaptions) : Object.keys(translations);
 	const notInEnus = _.reduce(index, (acc, fieldDef) => {
 		if (itemsToExclude.includes(fieldDef.typeOptions.picklistName)) return acc;
 		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName)) acc.push({ fieldDef, attributes });
