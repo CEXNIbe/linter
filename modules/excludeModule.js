@@ -39,7 +39,8 @@ module.exports = {
 	},
 
 	validationFieldsToExclude: (filename) => {
-		const exclude = ['parentId'];
+		const exclude = getEnvironmentVariable('LINTER_DIR_FIELDS_TO_EXCLUDE');
+		exclude.push(...['parentId', 'entityId']);
 
 		if (filename === 'user/validation.js') {
 			exclude.push('oldPassword', 'confirmedPassword');
