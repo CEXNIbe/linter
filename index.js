@@ -7,7 +7,7 @@ let defaultsModule = require(`${__dirname}/modules/defaults.js`);
 let utils = require(`${__dirname}/modules/utils.js`);
 const config = require(`${__dirname}/config.js`);
 
-let optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
+let optionsPicklist = require(`${process.argv[2]}/config/options.picklists.js`);
 
 const platformEnUsPath = path.join(process.argv[2], 'node_modules/isight/script/data/translations/en_US.js');
 const configEnUsPath = path.join(process.argv[2], 'data/translations/en_US.js');
