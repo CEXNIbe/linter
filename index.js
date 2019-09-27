@@ -143,7 +143,7 @@ function testIndexFile(entity) {
 	picklists = checkPicklistHasTypeOptions(picklists, indexNameWithPath);
 	checkPicklistDependeciesIsArray(picklists, indexNameWithPath);
 	picklistsHasPicklistName(picklists, indexNameWithPath);
-	picklistsInOptions(picklists, indexNameWithPath);
+	picklistsInOptions(picklists, indexNameWithPath, entity.configFields);
 	picklistInEn(picklists, indexNameWithPath);
 	picklistJSONFileExists(picklists, indexNameWithPath);
 	picklistDependenciesMatchUp(picklists, indexNameWithPath);
@@ -232,6 +232,7 @@ function checkForDuplicateFieldDefinitions(entity, indexNameWithPath) {
 
 		const itemsToExclude = excludeModule.validationFieldsToExclude(indexNameWithPath);
 		_.remove(res.duplicates, (field) => _.includes(itemsToExclude, field));
+		entity.configFields = res.fields;
 
 		PrintModule.printArrayList(indexNameWithPath, res.duplicates, 'Duplicate field definitions');
 	} catch (err) {
@@ -465,14 +466,15 @@ function picklistsHasPicklistName(picklistIndex, fileName) {
 	PrintModule.printFields(fileName, 'Picklist missing picklistName', missingPicklistName);
 }
 
-function picklistsInOptions(picklistIndex, fileName) {
+function picklistsInOptions(picklistIndex, fileName, configFields) {
 	const attributes = ['field', 'typeOptions.picklistName'];
 	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
 	const optionsKeys = Object.keys(optionsPicklist);
 	const notInOptions = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.includes(optionsKeys, fieldDef.typeOptions.picklistName) &&
-			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
+			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName) &&
+			_.includes(configFields, fieldDef.field)) {
 			acc.push({ fieldDef, attributes });
 		}
 
