@@ -19,7 +19,9 @@ Environment variables to exclude item from being checked
 
 	- LINTER_DIR_DISPLAY_RULES_TO_EXCLUDE: comma seperated list of display rules to ignore
 
-	- LINTER_DIR_FORMS_TO_EXCLUDE: comma seperated of forms to exclude
+	- LINTER_DIR_FORMS_TO_EXCLUDE: comma seperated list of forms to exclude
+
+	- LINTER_DIR_FIELDS_TO_EXCLUDE: comma seperated list of fields to exclude
 		"
 	else
 		echo 'unreconized argument "'$1'"'
