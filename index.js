@@ -144,7 +144,7 @@ function testIndexFile(entity) {
 	checkPicklistDependeciesIsArray(picklists, indexNameWithPath);
 	picklistsHasPicklistName(picklists, indexNameWithPath);
 	picklistsInOptions(picklists, indexNameWithPath, entity.configFields);
-	picklistInEn(picklists, indexNameWithPath);
+	picklistInEn(picklists, indexNameWithPath, entity.configFields);
 	picklistJSONFileExists(picklists, indexNameWithPath);
 	picklistDependenciesMatchUp(picklists, indexNameWithPath);
 
@@ -500,14 +500,17 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 	PrintModule.printFields(fileName, 'Picklist .json file missing from data/lists', notInFiles);
 }
 
-function picklistInEn(index, fileName) {
+function picklistInEn(index, fileName, configFields) {
 	const attributes = ['field', 'typeOptions.picklistName'];
 	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
 	const enusKeys = config.platformVersionIsFive ? Object.keys(picklistCaptions) : Object.keys(translations);
 	const notInEnus = _.reduce(index, (acc, fieldDef) => {
 		if (itemsToExclude.includes(fieldDef.typeOptions.picklistName)) return acc;
-		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName)) acc.push({ fieldDef, attributes });
+		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName) &&
+			_.includes(configFields, fieldDef.field)) {
+			acc.push({ fieldDef, attributes });
+		}
 		return acc;
 	}, []);
 
