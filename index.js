@@ -704,6 +704,9 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 		const form = utils.parseForm(formPath, formName);
 
 		const result = _.reduce(form.elements, (acc, fieldDef) => {
+			const fieldsToExclude = excludeModule.validationFieldsToExclude(formName);
+			if (fieldsToExclude.includes(fieldDef.field)) return acc;
+
 			const isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
 			if (isMandatoryField && _.has(fieldDef, 'displayRule')) {
 				acc.mandatoryFields.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
