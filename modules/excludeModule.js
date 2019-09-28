@@ -46,6 +46,8 @@ module.exports = {
 			exclude.push('oldPassword', 'confirmedPassword');
 		} else if (filename === 'todo/validation.js') {
 			exclude.push('other');
+		} else if ('todo-details-form.js') {
+			exclude.push('status');
 		}
 
 		return exclude;
