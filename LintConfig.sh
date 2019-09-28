@@ -1,7 +1,10 @@
 workingDir=$(pwd)
 projectDir=$LINTER_DIR
 
-nodeVersion=$(node -v | awk '{ print substr($1,2) }')
+nodeVersion=$(node -v)
+endIndex=$((`expr index "$nodeVersion" .` - 1))
+nodeVersion=$(echo $nodeVersion | cut -c2-$endIndex)
+echo $nodeVersion
 
 if [ -z "$LINTER_DIR" ]; then
 	echo '---------------------------------------------------'
