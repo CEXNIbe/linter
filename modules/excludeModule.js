@@ -1,12 +1,13 @@
 /**
 	This module defines files/items to exclude from error checking
 **/
-
+const config = require(`${__dirname}/../config.js`);
 
 module.exports = {
 	picklistsToExclude: (filename) => {
 		const exclude = [];
 		if (filename === 'user/index.js') exclude.push('user_status');
+		if (config.platformVersionIsFive) exclude.push('record_sources');
 		return exclude;
 	},
 
@@ -38,12 +39,15 @@ module.exports = {
 	},
 
 	validationFieldsToExclude: (filename) => {
-		const exclude = ['parentId'];
+		const exclude = getEnvironmentVariable('LINTER_DIR_FIELDS_TO_EXCLUDE');
+		exclude.push(...['parentId', 'entityId']);
 
 		if (filename === 'user/validation.js') {
 			exclude.push('oldPassword', 'confirmedPassword');
 		} else if (filename === 'todo/validation.js') {
 			exclude.push('other');
+		} else if ('todo-details-form.js') {
+			exclude.push('status');
 		}
 
 		return exclude;

@@ -1,17 +1,21 @@
 let _ = require('lodash');
 let fs = require('fs');
 let path = require('path');
-let PrintModule = require(__dirname + '/modules/printModule.js');
-let excludeModule = require(__dirname + '/modules/excludeModule.js');
-let defaultsModule = require(__dirname + '/modules/defaults.js');
-let utils = require(__dirname + '/modules/utils.js')
+let PrintModule = require(`${__dirname}/modules/printModule.js`);
+let excludeModule = require(`${__dirname}/modules/excludeModule.js`);
+let defaultsModule = require(`${__dirname}/modules/defaults.js`);
+let utils = require(`${__dirname}/modules/utils.js`);
+const config = require(`${__dirname}/config.js`);
 
-
-let optionsPicklist = require(process.argv[2] + '/config/options.picklists.js');
+let optionsPicklist = require(`${process.argv[2]}/config/options.picklists.js`);
 
 const platformEnUsPath = path.join(process.argv[2], 'node_modules/isight/script/data/translations/en_US.js');
 const configEnUsPath = path.join(process.argv[2], 'data/translations/en_US.js');
-let translations = utils.mergeTranslations(platformEnUsPath, configEnUsPath);
+const translations = utils.mergeTranslations(platformEnUsPath, configEnUsPath);
+let picklistCaptions;
+if (config.platformVersionIsFive) {
+	picklistCaptions = utils.mergePicklistCaptionTranslations(platformEnUsPath, configEnUsPath);
+}
 let JSONfiles = getPicklistJSONFiles();
 let fieldTypes = getFieldTypes();
 
@@ -48,7 +52,9 @@ function getEntities() {
 	const entityDir = fs.readdirSync(entitiesPath, 'utf8');
 
 	return _.reduce(entityDir, (acc, entityName) => {
-		if (entityName === 'index-ui.js' || _.startsWith(entityName, '.')) return acc;
+		const folderPath = path.join(entitiesPath, entityName);
+		const stats = fs.statSync(folderPath);
+		if (!stats.isDirectory()) return acc;
 
 		try {
 			const entityIndexPath = path.join(entitiesPath, entityName, 'index.js');
@@ -57,6 +63,7 @@ function getEntities() {
 			const entityIndex = require(entityIndexPath);
 			const entityMapper = entityIndex.entity;
 			entityMapper.path = path.join(entitiesPath, entityName);
+			entityMapper.indexPath = entityIndexPath;
 			entityMapper.indexFile = entityIndex;
 			entityMapper.indexFieldNames = getFieldNames(entityIndex.fields);
 
@@ -136,14 +143,16 @@ function testIndexFile(entity) {
 	picklists = checkPicklistHasTypeOptions(picklists, indexNameWithPath);
 	checkPicklistDependeciesIsArray(picklists, indexNameWithPath);
 	picklistsHasPicklistName(picklists, indexNameWithPath);
-	picklistsInOptions(picklists, indexNameWithPath);
-	picklistInEn(picklists, indexNameWithPath);
+	picklistsInOptions(picklists, indexNameWithPath, entity.configFields);
+	picklistInEn(picklists, indexNameWithPath, entity.configFields);
 	picklistJSONFileExists(picklists, indexNameWithPath);
 	picklistDependenciesMatchUp(picklists, indexNameWithPath);
 
 	const radios = getRadioDefs(indexFile.fields, indexNameWithPath);
 	checkRadioTypeOptions(radios, indexNameWithPath);
-	checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
+	if (config.platformVersionIsFour) {
+		checkRadioCaptionsHaveTranslations(radios, indexNameWithPath);
+	}
 
 	displayRulesOfValidationFields(indexFile, indexNameWithPath);
 }
@@ -199,11 +208,8 @@ function testForm(formName, formPath) {
 *	@param indexNameWithPath: the name of the file
 **/
 function checkForDuplicateFieldDefinitions(entity, indexNameWithPath) {
-	const entitiesPath = path.join(process.argv[2], 'entities');
-	const indexFullPath = path.join(entitiesPath, entity.name, 'index.js');
-
 	try {
-		const lines = fs.readFileSync(indexFullPath, 'utf8').split(/\n/);
+		const lines = fs.readFileSync(entity.indexPath, 'utf8').split(/\n/);
 		let res = _.reduce(lines, (acc, line) => {
 			var pattern = 'field:';
 			let match = line.match(pattern);
@@ -226,6 +232,7 @@ function checkForDuplicateFieldDefinitions(entity, indexNameWithPath) {
 
 		const itemsToExclude = excludeModule.validationFieldsToExclude(indexNameWithPath);
 		_.remove(res.duplicates, (field) => _.includes(itemsToExclude, field));
+		entity.configFields = res.fields;
 
 		PrintModule.printArrayList(indexNameWithPath, res.duplicates, 'Duplicate field definitions');
 	} catch (err) {
@@ -256,6 +263,12 @@ function checkFormFieldsInIndex(indexFieldNames, form, fileName) {
 						acc.push(sectionField);
 					});
 				}
+			} else if (_.startsWith(field.field, 'caseId__')) {
+				// Ignoring Case Id Fields for now
+				// TODO: Incorporate caseId__ fields.
+				return acc;
+			} else if (!field.field) {
+				return acc;
 			} else if (!_.includes(indexFieldNames, field.field)) {
 				acc.push({ fieldDef: field, attributes });
 			}
@@ -453,14 +466,15 @@ function picklistsHasPicklistName(picklistIndex, fileName) {
 	PrintModule.printFields(fileName, 'Picklist missing picklistName', missingPicklistName);
 }
 
-function picklistsInOptions(picklistIndex, fileName) {
+function picklistsInOptions(picklistIndex, fileName, configFields) {
 	const attributes = ['field', 'typeOptions.picklistName'];
 	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
 	const optionsKeys = Object.keys(optionsPicklist);
 	const notInOptions = _.reduce(picklistIndex, (acc, fieldDef) => {
 		if (!_.includes(optionsKeys, fieldDef.typeOptions.picklistName) &&
-			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName)) {
+			!_.includes(itemsToExclude, fieldDef.typeOptions.picklistName) &&
+			_.includes(configFields, fieldDef.field)) {
 			acc.push({ fieldDef, attributes });
 		}
 
@@ -486,16 +500,21 @@ function picklistJSONFileExists(picklistIndex, fileName) {
 	PrintModule.printFields(fileName, 'Picklist .json file missing from data/lists', notInFiles);
 }
 
-function picklistInEn(index, fileName) {
+function picklistInEn(index, fileName, configFields) {
 	const attributes = ['field', 'typeOptions.picklistName'];
+	const itemsToExclude = excludeModule.picklistsToExclude(fileName);
 
-	const enusKeys = Object.keys(translations);
+	const enusKeys = config.platformVersionIsFive ? Object.keys(picklistCaptions) : Object.keys(translations);
 	const notInEnus = _.reduce(index, (acc, fieldDef) => {
-		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName)) acc.push({ fieldDef, attributes });
+		if (itemsToExclude.includes(fieldDef.typeOptions.picklistName)) return acc;
+		if (!_.includes(enusKeys, fieldDef.typeOptions.picklistName) &&
+			_.includes(configFields, fieldDef.field)) {
+			acc.push({ fieldDef, attributes });
+		}
 		return acc;
 	}, []);
 
-	PrintModule.printFields(fileName, 'Picklist translations missing form en_US', notInEnus);
+	PrintModule.printFields(fileName, 'Picklist translations missing from en_US', notInEnus);
 }
 
 function picklistDependenciesMatchUp(picklistIndex, fileName) {
@@ -618,18 +637,23 @@ function picklistHasSameName(picklist, fileName) {
 }
 
 function checkRadioTypeOptions(radios, fileName) {
-	const attributes = ['field', 'typeOptions.radios'];
+	const attributes = ['field', 'typeOptions', 'typeOptions.radios'];
 
 	const result = _.reduce(radios, (acc, fieldDef) => {
-		if (!_.has(fieldDef, 'typeOptions.radios')) {
+		if (!fieldDef.typeOptions) {
+			acc.missingTypeOptions.push({ fieldDef, attributes });
+		} else if (config.platformVersionIsFive) {
+			return acc;
+		} else if (!_.has(fieldDef, 'typeOptions.radios')) {
 			acc.missingRadiosOption.push({ fieldDef, attributes });
 		} else if (!_.isArray(fieldDef.typeOptions.radios)) {
 			acc.radiosOptionsNotArray.push({ fieldDef, attributes });
 		}
 
 		return acc;
-	}, { missingRadiosOption: [], radiosOptionsNotArray: [] });
+	}, { missingRadiosOption: [], radiosOptionsNotArray: [], missingTypeOptions: [] });
 
+	PrintModule.printFields(fileName, 'Radios missing typeOptions attribute', result.missingTypeOptions);
 	PrintModule.printFields(fileName, 'Radios missing typeOptions.radios attribute', result.missingRadiosOption);
 	PrintModule.printFields(fileName, 'typeOptions.radios is not an array', result.radiosOptionsNotArray);
 }
@@ -680,6 +704,9 @@ function displayRulesOfValidationFields(indexFile, indexNameWithPath) {
 		const form = utils.parseForm(formPath, formName);
 
 		const result = _.reduce(form.elements, (acc, fieldDef) => {
+			const fieldsToExclude = excludeModule.validationFieldsToExclude(formName);
+			if (fieldsToExclude.includes(fieldDef.field)) return acc;
+
 			const isMandatoryField = _.includes(mandatoryFields, fieldDef.field);
 			if (isMandatoryField && _.has(fieldDef, 'displayRule')) {
 				acc.mandatoryFields.push({ fieldDef, attributes: ['field', 'displayRule'], color: 'warn' });
@@ -737,15 +764,27 @@ function getPicklistJSONFiles() {
 }
 
 function getFieldTypes(){
-	const fieldTypes = require(__dirname + '/modules/fieldTypes.js');
+	const fieldTypes = [];
 
-	const fieldTypesPath = process.argv[2] + '/field-types';
+	const fieldTypesPath = `${process.argv[2]}/field-types`;
 	if (fs.existsSync(fieldTypesPath)) {
 		const files = fs.readdirSync(fieldTypesPath);
 
 		_.forEach(files, (file) => {
-			if (fs.existsSync(fieldTypesPath + `/${file}/index.js`)) {
-				const fieldIndex = require(fieldTypesPath + `/${file}/index.js`);
+			if (fs.existsSync(`${fieldTypesPath}/${file}/index.js`)) {
+				const fieldIndex = require(`${fieldTypesPath}/${file}/index.js`);
+				fieldTypes.push(fieldIndex.name);
+			}
+		})
+	}
+
+	const platformFieldTypes = `${process.argv[2]}/node_modules/isight/field-types`;
+	if (fs.existsSync(platformFieldTypes)) {
+		const files = fs.readdirSync(platformFieldTypes);
+
+		_.forEach(files, (file) => {
+			if (fs.existsSync(`${platformFieldTypes}/${file}/index.js`)) {
+				const fieldIndex = require(`${platformFieldTypes}/${file}/index.js`);
 				fieldTypes.push(fieldIndex.name);
 			}
 		})

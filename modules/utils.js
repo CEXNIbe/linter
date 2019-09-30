@@ -20,8 +20,24 @@ module.exports = {
 		const configTranslations = _.filter(configEnUs.groups, (group) => {
 			return group.groupName === null;
 		});
+		const mergedTranslation = _.merge(...platformTranslations, ...configTranslations);
+		return mergedTranslation.subgroups[0].translations;
+	},
 
-		return _.merge(platformTranslations[0].subgroups[0].translations, configTranslations[0].subgroups[0].translations);
+	/**
+	*	Returns the config picklist_type group.
+	*	@param platformEnUsPath: the platform translation file
+	*	@param configEnUsPath: the config translation file
+	*	@returns: an object containing configs picklist captions
+	**/
+	mergePicklistCaptionTranslations: (platformEnUsPath, configEnUsPath) => {
+		const configEnUs = require(configEnUsPath);
+
+		const configTranslations = _.filter(configEnUs.groups, (group) => {
+			return group.groupName === 'picklist_type';
+		});
+		const mergedTranslation = _.merge(...configTranslations);
+		return mergedTranslation.subgroups[0].translations;
 	},
 
 	/**
