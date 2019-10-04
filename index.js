@@ -533,7 +533,7 @@ function picklistDependenciesMatchUp(picklistIndex, fileName) {
 		let parentFielfDef = _.filter(picklistIndex, def => def.field === parent);
 
 		parentFielfDef = parentFielfDef[0];
-		if (_.has(parentFielfDef.typeOptions, 'picklistDependencies') &&
+		if (_.has(parentFielfDef, 'typeOptions.picklistDependencies') &&
 			!_.isEqual(parents, parentFielfDef.typeOptions.picklistDependencies)) {
  			dependenciesMisMatch.push({ fieldDef, attributes });
 		}
