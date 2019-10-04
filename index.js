@@ -520,7 +520,6 @@ function picklistInEn(index, fileName, configFields) {
 function picklistDependenciesMatchUp(picklistIndex, fileName) {
 	const attributes = ['field', 'typeOptions.picklistDependencies'];
 
-	const parentNotPicklist = [];
 	const dependenciesMisMatch = [];
 
 	_.forEach(picklistIndex, (fieldDef) => {
@@ -532,10 +531,6 @@ function picklistDependenciesMatchUp(picklistIndex, fileName) {
 
 		const parent = parents.pop();
 		let parentFielfDef = _.filter(picklistIndex, def => def.field === parent);
-		if (_.isEmpty(parentFielfDef)) {
-			parentNotPicklist.push({ fieldDef, attributes });
-			return;
-		}
 
 		parentFielfDef = parentFielfDef[0];
 		if (_.has(parentFielfDef.typeOptions, 'picklistDependencies') &&
@@ -544,7 +539,6 @@ function picklistDependenciesMatchUp(picklistIndex, fileName) {
 		}
 	});
 
-	PrintModule.printFields(fileName, 'PicklistDependencies is not a picklist', parentNotPicklist);
 	PrintModule.printFields(fileName, `PicklistDependencies doesn't match up with parents dependency`, dependenciesMisMatch);
 }
 
