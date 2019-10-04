@@ -2,15 +2,15 @@ workingDir=$(pwd)
 projectDir=$LINTER_DIR
 
 nodeVersion=$(node -v)
-endIndex=$((`expr index "$nodeVersion" .` - 1))
-nodeVersion=$(echo $nodeVersion | cut -c2-$endIndex)
+nodeMajor="${nodeVersion#*v}"
+nodeMajor="${nodeMajor%%.*}"
 
 if [ -z "$LINTER_DIR" ]; then
 	echo '---------------------------------------------------'
 	echo 'Environment variable LINTER_DIR not provided'
 	echo 'Please export LINTER_DIR=<path/to/linter>'
 	echo '---------------------------------------------------'
-elif [[ $nodeVersion -lt 6 ]]; then
+elif [[ $nodeMajor -lt 6 ]]; then
 	echo '---------------------------------------------------'
 	echo 'Unsupported node version' $(node -v)
 	echo '---------------------------------------------------'
